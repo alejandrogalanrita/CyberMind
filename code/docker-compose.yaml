@@ -143,20 +143,6 @@ services:
       timeout: 5s
       retries: 3
 
-
-  phpmyadmin:
-    image: phpmyadmin/phpmyadmin
-    container_name: phpmyadmin
-    environment:
-      PMA_HOST: mariadb
-      PMA_USER: admin
-      PMA_PASSWORD: admin_password
-    ports:
-      - "8008:80"
-    depends_on:
-      db:
-        condition: service_healthy
-
   ai_runner:
     provider:
       type: model

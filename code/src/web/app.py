@@ -1,102 +1,39 @@
-"""
-SVAIA Web application that allows clients to track vulnerabilities in package dependencies.
-
-The application takes a SBOM in CycloneDX format and uses a CVE database to locate possible issues.
-This database is populated via open APIs like the one from NIST.
-An LLM summarises info and provides the client with reports, graphs and possible solutions,
-as well as the functionality to set up notifications whenever an issue arises or a patch is available.
-"""
-
-# Imports
 import os
-import re
 import time
-import toml
-import json
+
+from typing import Optional
+from datetime import timedelta
+
 import mariadb
+import toml
 
-from datetime import datetime
-from flask import Flask, render_template, request, redirect, url_for, jsonify, session
+from flask import Flask, Response, render_template, request, redirect, url_for, jsonify, session
+from flask_bcrypt import Bcrypt, check_password_hash
 from flask_cors import CORS
-from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user
-
-
-from flask_bcrypt import Bcrypt, generate_password_hash, check_password_hash
-
-from urllib.parse import urlparse, urljoin
 
 from resources.dbmodel.database_classes import Users
 from resources.dbmodel.database_engine import db
+from resources.utils import send_log, is_safe_url
 
-from resources.utils import send_log
-
-import base64
-
-from datetime import timedelta
-
-# Initialize Flask app
-
+# Initialize the Flask application
 app = Flask(__name__, template_folder="application/templates", static_folder="application/static")
-CORS(app)
+CORS(app, supports_credentials=True, origins=["http://localhost:3000"])
 
-app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)  # or any duration
-
-# Load configuration from config.toml
+# Load configuration from a TOML file
+app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(minutes=30)
 app.config.from_file("resources/config.toml", load=toml.load)
-ALLOWED_ROLES = app.config.get("ALLOWED_ROLES").split(",")
 
+# Set the secret key for session management
 db_user = os.environ.get("DB_USER")
 db_password = os.environ.get("DB_PASSWORD")
+app.config["SQLALCHEMY_DATABASE_URI"] = app.config["URI_TEMPLATE"].format(user=db_user, password=db_password)
 
-uri_template = "mariadb+mariadbconnector://{user}:{password}@mariadb:3306/flask_database"
-
-app.config['SQLALCHEMY_DATABASE_URI'] = uri_template.format(
-    user=db_user,
-    password=db_password
-)
-
-# Instantiate the database connection
+# Initialize the database connection
 db.init_app(app)
 
-# Initialize Bcrypt for password hashing
+# Initialize the Bcrypt instance for password hashing
 bcrypt = Bcrypt(app)
-
-
-# Function to check if the email is valid
-def is_valid_email(email: str) -> bool:
-    """
-    Verifies the format of the email address.
-
-    Parameters:
-        email (str): The email address to be validated.
-
-    Returns:
-        bool: True if the email is valid, False otherwise.
-
-    """
-
-    pattern = r"(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)"
-
-    return re.match(pattern, email) is not None and email != "temp@svaia.com"
-
-
-# Function to check if the URL is safe for redirection
-def is_safe_url(target: str) -> bool:
-    """
-    Verifies if the target URL is safe for redirection.
-
-    Parameters:
-        target (str): The target URL to be validated.
-
-    Returns:
-        bool: True if the URL is safe, False otherwise.
-    """
-    ref_url = urlparse(request.host_url)
-    test_url = urlparse(urljoin(request.host_url, target))
-
-    return test_url.scheme in ("http", "https") and ref_url.netloc == test_url.netloc
-
 
 # Instantiate the login manager
 login_manager = LoginManager()
@@ -121,76 +58,99 @@ def load_user(email: str) -> Users:
 
 # Login routes
 @app.route("/login", methods=["GET", "POST"])
-def login() -> str:
-    """Handles user login."""
+def login() -> tuple[Response, int] | str:
+    """
+    Handles user login.
 
-    # Handle GET request
-    if request.method == "GET":
+    This route supports both GET and POST requests:
+        - GET: Renders the login page.
+        - POST: Processes the login form submission.
+    """
+
+    def handle_get() -> str:
+        """Handles GET requests for the login route."""
         next_page = request.args.get("next")
         next_page = "/" if next_page == "None" else next_page
 
         return render_template("login.html", next=next_page)
 
-    # Handle POST request
-    else:
-        data = request.get_json()
+    def handle_inactive_user(username: str) -> tuple[Response, int]:
+        """Handles the case where the user is inactive."""
+        send_log(level="WARNING", user=username, message=f"User {username} attempted to log in but is inactive.")
 
-        # Look up the user in the database
-        username = data.get("email")
-        user = Users.query.filter_by(email=username).first()
+        return jsonify({"status": "error", "message": "El usuario ha sido eliminado"}), 403
 
-        # Check if the user exists and is active
-        if user and not user.active:
-            registry_manager.log(
-                level="WARNING",
-                user=username,
-                message=f"User {username} attempted to log in but is inactive."
-            )
-            return jsonify({"status": "error", "message": "El usuario ha sido eliminado"}), 403
+    def handle_successful_login(user: Users, username: str, next_page: str) -> Response | tuple[Response, int]:
+        """
+        Handles successful login.
 
-        # Get the password from the request
-        password = data.get("password")
-        if user and check_password_hash(user.user_password, password):
-            login_user(user, remember=False)
-            session.permanent = True  # Make the session permanent
-            session['created'] = time.time()  # Store the cookie creation time
+        Parameters:
+            user (Users): The user object.
+            username (str): The username of the user.
+            next_page (str): The page to redirect to after login.
 
-            # Get the next page from the request
-            next_page = data.get("next")
-            next_page = "/" if next_page == "None" else next_page
+        Returns:
+            tuple: A tuple containing a JSON response and the HTTP status code.
+        """
+        login_user(user, remember=False)
 
-            send_log(
-                level="INFO",
-                user=username,
-                message=f"User '{username}' logged in successfully."
-            )
+        # Make the session permanent
+        session.permanent = True
 
-            if is_safe_url(next_page):
-                return jsonify({"status": "success", "url": next_page}), 200
+        # Store the cookie creation time
+        session["created"] = time.time()
 
-            elif request.referrer and is_safe_url(request.referrer):
-                return redirect(request.referrer)
+        send_log(level="INFO", user=username, message=f"User '{username}' logged in successfully.")
 
-            else:
-                return redirect(url_for("home"))
-        else:  # Invalid credentials
-            send_log(
-                level="ERROR",
-                user=username,
-                message=f"User '{username}' failed to log in due to invalid credentials."
-            )
-            return jsonify({"status": "error", "message": "Invalid credentials"}), 401
+        if is_safe_url(next_page):
+            return jsonify({"status": "success", "url": next_page}), 200
+        if request.referrer and is_safe_url(request.referrer):
+            return redirect(request.referrer)
+
+        return redirect(url_for("home"))
+
+    def handle_invalid_credentials(username: str) -> tuple[Response, int]:
+        """
+        Handles invalid login credentials.
+
+        Parameters:
+            username (str): The username of the user attempting to log in.
+        Returns:
+            tuple: A tuple containing a JSON response and the HTTP status code.
+        """
+        send_log(
+            level="ERROR", user=username, message=f"User '{username}' failed to log in due to invalid credentials."
+        )
+        return jsonify({"status": "error", "message": "Invalid credentials"}), 401
+
+    if request.method == "GET":
+        return handle_get()
+
+    # POST request
+    data = request.get_json()
+    username = data.get("email")
+    user = Users.query.filter_by(email=username).first()
+
+    if user and not user.active:
+        response, status = handle_inactive_user(username)
+        return response, status
+
+    password = data.get("password")
+    if user and check_password_hash(user.user_password, password):
+        next_page = data.get("next")
+        next_page = "/" if next_page == "None" else next_page
+        response, status = handle_successful_login(user, username, next_page)
+        return response, status
+
+    response, status = handle_invalid_credentials(username)
+    return response, status
 
 
 @app.route("/logout")
 @login_required
-def logout() -> str:
+def logout() -> Response:
     """Handles user logout."""
-    send_log(
-        level="INFO",
-        user=current_user.email,
-        message=f"User '{current_user.email}' logged out successfully."
-    )
+    send_log(level="INFO", user=current_user.email, message=f"User '{current_user.email}' logged out successfully.")
     logout_user()
 
     return redirect(url_for("home"))
@@ -200,47 +160,27 @@ def logout() -> str:
 @app.get("/")
 def home() -> str:
     """Renders the Home page for the web application."""
-    # Get the current user for the template ID
-    user = current_user if current_user.is_authenticated else None
-
-    return render_template("index.html", user=user)
+    return render_template("index.html", user=current_user or None)
 
 
 @app.route("/chat")
 @login_required
 def chat() -> str:
-    """
-    Renders the chat page for the web application
-    Calls the get_projects() function to send the projects to the frontend.
-    """
-    # Get the current user for the template ID
-    user = current_user if current_user.is_authenticated else None
+    """Renders the Chat page for the web application."""
+    return render_template("chat.html", user=current_user or None)
 
-    return render_template("chat.html", user=user)
 
 @app.get("/cve")
 def cve() -> str:
-    """
-    Returns a list of CVEs from the database.
-    This route is used to fetch CVEs for the frontend.
-    """
-    user = current_user if current_user.is_authenticated else None
+    """Renders the CVE database page for the web application."""
+    return render_template("cve.html", user=current_user or None)
 
-    return render_template("cve.html", user=user)
 
 # Admin routes
 @app.get("/panel")
 @login_required
 def panel() -> str:
-    """
-    Renders the admin panel for the web application.
-    This route is only accessible to admin users.
-    The admin panel includes the following features:
-        - Displays a list of all users.
-        - Displays a list of all projects.
-        - Displays a list of all deleted projects.
-        - Allows admin users to manage (Create, Update & Delete) Users and Projects.
-    """
+    """Renders the Admin or User Panel page for the web application."""
     # Check if the user is an admin
     if current_user.role != "admin":
         return render_template("account.html", user=current_user)
@@ -253,46 +193,40 @@ def panel() -> str:
         users=users,
     )
 
+
 @app.get("/notification")
 @login_required
 def notifications() -> str:
-    user = current_user
-    return render_template("notification.html", user=user, user_role=user.role)
+    """Renders the notifications panel page for the web application."""
+    return render_template("notification.html", user=current_user, user_role=current_user.role)
 
 
-
-# Error handling for 404
+# Error handling
 @app.errorhandler(404)
-def page_not_found(e):
+def page_not_found(e: Exception) -> tuple[Response, int]:
     """Handles 404 errors."""
-    user = current_user if current_user.is_authenticated else None
-    return render_template("404.html", user=user), 404
+    return render_template("404.html", user=current_user or None), 404
+
 
 @app.errorhandler(500)
-def internal_server_error(e):
+def internal_server_error(e: Exception) -> tuple[Response, int]:
     """Handles 500 errors."""
-    user = current_user if current_user.is_authenticated else None
-    return render_template("500.html", user=user), 500
+    return render_template("500.html", user=current_user), 500
 
+
+# Request lifecycle management
 @app.before_request
-def check_cookie_expiration():
+def check_cookie_expiration() -> Optional[Response]:
+    """Checks if the session cookie has expired and logs out the user if necessary."""
     # Only check when the user is authenticated
     if current_user.is_authenticated:
-        created = session.get('created')
+        created = session.get("created")
         now = time.time()
         # If the cookie was set and 30 minutes (1800 seconds) have passed
         if created and (now - created) > 1800:
             logout_user()
             session.clear()
             return redirect(url_for("login"))
-
-
-@app.after_request
-def add_cors_headers(response):
-    """Adds CORS headers to the response."""
-    response.headers["Access-Control-Allow-Origin"] = "localhost:3000"
-    response.headers["Access-Control-Allow-Credentials"] = "true"
-    return response
 
 
 if __name__ == "__main__":

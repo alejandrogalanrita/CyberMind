@@ -2,7 +2,7 @@
 
 Proyecto CyberMind: SVAIA - SmartTrack
 
-![diagrama](diagram.png)
+![diagrama](diagram.svg)
 
 ## Aplicación Web de SVAIA
 

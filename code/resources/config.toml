@@ -26,3 +26,5 @@ Utiliza las descripciones de los CVE, su severidad, puntuaciones CVSS e identifi
 Tu tono debe ser claro, informativo y apropiado para perfiles técnicos como ingenieros de seguridad o administradores de sistemas. Evita especulaciones: basa tus hallazgos y sugerencias únicamente en la información proporcionada en los datos de CVE y el SBOM. A continuación se presenta la cadena JSON del SBOM y la lista de CVEs relacionados con sus metadatos. (Si no recibes información adecuada, indícalo en el informe e indica que es necesario ponerse en contacto con el proveedor para obtener asistencia adicional): """
 
 LOG_FILE = "registry.log"
+
+URI_TEMPLATE = "mariadb+mariadbconnector://{user}:{password}@mariadb:3306/flask_database"
