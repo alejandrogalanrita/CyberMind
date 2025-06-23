@@ -100,9 +100,7 @@ El usuario administrador puede crear nuevos usuarios y proyectos, así como gest
 
 ## DEMO
 
-Puedes ver una demostración de la aplicación en el siguiente video:
-
-<video controls src="video_demo.mov" title="Demostración de SVAIA"></video>
+Puedes ver una demostración de la aplicación en el video `video_demo.mov` del repositorio.
 
 ## Autores
 
