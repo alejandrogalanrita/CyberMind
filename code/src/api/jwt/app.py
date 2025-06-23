@@ -23,7 +23,7 @@ app.config.from_file("resources/config.toml", load=toml.load)
 app.config["JWT_ACCESS_LIFESPAN"] = timedelta(minutes=30)
 
 # Set the CORS configuration
-CORS(app, supports_credentials=True, origins=[app.config.get("DB_URI")])
+CORS(app, supports_credentials=True, origins=[app.config.get("WEB_URI")])
 
 # Set the secret key for session management
 db_user = os.environ.get("DB_USER")

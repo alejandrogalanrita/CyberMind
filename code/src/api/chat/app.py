@@ -165,8 +165,7 @@ class SendMessage(Resource):
             db.session.commit()
 
         except Exception as e:
-            print(f"Error: {e}", flush=True)
-            return {"ok": False, "response": str(e)}, 500
+            return {"ok": False, "response": "An error ocurred"}, 500
 
         send_log(
             level="INFO",
@@ -266,8 +265,7 @@ def send_notification(user_email: str, subject: str, message: str, project_name:
         response.raise_for_status()
         return response.json()
     except Exception as e:
-        print(f"Error sending message: {str(e)}", flush=True)
-        return None
+        return {"error": str(e), "message": "Failed to send notification"}
 
 
 def generate_cve_embedding() -> None:
@@ -379,8 +377,6 @@ def generate_sbom_report(sbom_json: str, tags: Optional[str]) -> tuple[str, str]
     }
 
     response = requests.post(_AI_RUNNER_URL, headers=headers, json=data)
-
-    print(f"Response from AI: {response}", flush=True)
 
     chat_reasoning = response.json()["choices"][0]["message"]["reasoning_content"]
     chat_response = response.json()["choices"][0]["message"]["content"]

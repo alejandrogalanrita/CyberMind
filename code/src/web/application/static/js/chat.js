@@ -36,6 +36,7 @@ function showStatusMessage(text) {
     }
 }
 // <-------------------- SHOW STATUS MESSAGE --------------------->
+
 // <-------------------- CLEAR STATUS MESSAGE --------------------->
 function clearStatusMessage() {
     const statusEl = document.getElementById("statusMessage");
@@ -75,6 +76,7 @@ function renderBotContent(markdown) {
     return container;
 }
 // <-------------------- RENDER BOT CONTENT --------------------->
+
 // <-------------------- SEND BOT MESSAGE --------------------->
 function sendBotMessage(text, reasoning) {
     if (!chatContainer) return;
@@ -403,7 +405,7 @@ document.getElementById("registerProject").addEventListener("submit", async func
 });
 // <-------------------- CREATE PROJECT --------------------->
 
-// <-------------------- REGISTER REPORT --------------------->
+// <-------------------- CREATE REPORT --------------------->
 function createReport(userEmail, projectName) {
     if (!confirm("Aviso, generar un reporte puede tardar unos minutos, durante los cuales el chat estaría inactivo durante ese tiempo. ¿Deseas continuar?")) {
         return;
@@ -411,7 +413,6 @@ function createReport(userEmail, projectName) {
 
     if (!localStorage.getItem("CurrentReportGenerate")) {
         localStorage.setItem("CurrentReportGenerate", [projectName]);
-        console.log("Current Report Project Name:", projectName);
     } else {
         showAlertBanner("Ya hay un reporte en proceso de generación. Por favor, espera a que se complete antes de generar otro.");
         return;
@@ -438,7 +439,6 @@ function createReport(userEmail, projectName) {
             return response.json();
         })
         .then(data => {
-            console.log("Respuesta del servidor:", data);
             if (data.ok) {
                 showAlertBanner("Reporte generado exitosamente.", "success");
                 localStorage.removeItem("CurrentReportGenerate");
@@ -475,17 +475,15 @@ function createReport(userEmail, projectName) {
 
                 setFiles();
             } else {
-                console.log("Va por el else");
                 showAlertBanner("Error al generar el reporte: " + data.message);
             }
         })
         .catch(error => {
-            console.log("Va por el error");
             console.error("Error al generar el reporte:", error);
             showAlertBanner("Error al generar el reporte.");
         });
 }
-// <-------------------- REGISTER REPORT --------------------->
+// <-------------------- CREATE REPORT --------------------->
 
 // <-------------------- DELETE PROJECTS SELECT --------------------->
 async function deleteProjectSelect() {
@@ -635,7 +633,6 @@ function modifyProject() {
             document.getElementById('edit_composite_score').value = data.content.composite_score;
         })
         .catch(error => {
-            console.log("Va por el error");
             console.error("Error al mostrar el modal:", error);
             showAlertBanner("Error al mostrar el modal.");
         });
@@ -727,7 +724,6 @@ async function submitProjectEdit(e) {
     }
 
     try {
-        console.log("Sending form data:", formData)
         const response = await fetch(API_ROUTE + "/edit-project", {
             method: "POST",
             credentials: 'include',
@@ -784,14 +780,12 @@ async function submitProjectEdit(e) {
 // <-------------------- EDIT PROJECTS --------------------->
 
 // <-------------------- SHOW MODAL CREATE --------------------->
-
 createProjectModal.addEventListener('show.bs.modal', () => {
     document.getElementById('max_total_vulns').value = 20;
     document.getElementById('min_fixable_ratio').value = 80;
     document.getElementById('max_severity_level').value = 7.0;
     document.getElementById('composite_score').value = 75;
 });
-
 // <-------------------- SHOW MODAL CREATE --------------------->
 
 // <-------------------- HIDE MODAL CREATE --------------------->
@@ -832,7 +826,6 @@ function setDescription() {
 // <-------------------- SET DESCRIPTION --------------------->
 
 // <-------------------- UPDATE FILES ---------------------->
-
 async function updateFiles(projectNames) {
     for (const projectName of projectNames) {
         fetch(API_ROUTE + '/get-report-data', {
@@ -884,18 +877,15 @@ async function updateFiles(projectNames) {
 
                     setFiles();
                 } else {
-                    console.log("Va por el else");
                     showAlertBanner("Error al generar el reporte: " + (data && data.message ? data.message : 'Respuesta inválida del servidor.'));
                 }
             })
             .catch(error => {
-                console.log("Va por el error");
                 console.error("Error al generar el reporte:", error);
                 showAlertBanner("Error al generar el reporte.");
             });
     }
 }
-
 // <-------------------- UPDATE FILES ---------------------->
 
 // <-------------------- SET FILES --------------------->
@@ -1048,7 +1038,6 @@ function setFiles() {
         };
 
         if (reportName && reportData) {
-            console.log("Report Name:", reportName);
             fileList.appendChild(createReportItem(reportName, reportData, reportReasoning));
         } else {
             fileList.appendChild(createReportButton());
@@ -1066,8 +1055,8 @@ function setFiles() {
     }
 }
 // <-------------------- SET FILES --------------------->
-// <-------------------- SHOW FILE MODAL --------------------->
 
+// <-------------------- SHOW FILE MODAL --------------------->
 function showFile(fileName, fileData) {
     document.getElementById("fileModalTitle").textContent = fileName;
     document.getElementById("fileDescription").textContent = fileData;
@@ -1075,11 +1064,9 @@ function showFile(fileName, fileData) {
     const fileModal = new bootstrap.Modal(document.getElementById('fileModal'));
     fileModal.show();
 }
-
 // <-------------------- SHOW FILE MODAL --------------------->
 
 // <-------------------- SHOW REPORT MODAL --------------------->
-
 function showReport(reportName, reportData, reportReasoning) {
 
     document.getElementById("reportModalTitle").textContent = reportName;
@@ -1126,7 +1113,7 @@ function showReport(reportName, reportData, reportReasoning) {
     reportModal.show();
 }
 
-// <-------------------- SHOW FILE MODAL --------------------->
+// <-------------------- SHOW REPORT MODAL --------------------->
 
 // <-------------------- HIDE MODAL REPORT --------------------->
 document.getElementById('reportModal').addEventListener('hidden.bs.modal', () => {
@@ -1137,7 +1124,6 @@ document.getElementById('reportModal').addEventListener('hidden.bs.modal', () =>
     const copyBtn = document.getElementById("copyReportBtn");
     copyBtn.textContent = "Copiar";
 });
-
 // <-------------------- HIDE MODAL REPORT --------------------->
 
 // <-------------------- SET ACTIVE ITEM --------------------->
@@ -1285,10 +1271,10 @@ document.addEventListener("DOMContentLoaded", async function () {
     checkAndSchedule(true);
 });
 // <-------------------- LOAD ALL PROJECTS --------------------->
+
 // <-------------------- CHECK AND SCHEDULE --------------------->
 async function checkGenerationStatus() {
     try {
-        console.log("Consultando estado de generación de reportes...");
         const response = await fetch(API_ROUTE + "/check-generation-status", {
             method: "GET",
             credentials: "include",
@@ -1300,7 +1286,6 @@ async function checkGenerationStatus() {
         }
 
         const result = await response.json();
-        console.log("Estado de generación recibido:", result);
         return result.projects || [];
     } catch (error) {
         console.error("Error al consultar el estado de generación:", error);
@@ -1310,7 +1295,6 @@ async function checkGenerationStatus() {
 
 async function checkAndSchedule(isFirstRun = false) {
     const projects = await checkGenerationStatus();
-    console.log("Proyectos en proceso de generación:", projects);
 
     if (projects && projects.length > 0) {
         localStorage.setItem("CurrentReportGenerate", JSON.stringify(projects));
@@ -1319,7 +1303,6 @@ async function checkAndSchedule(isFirstRun = false) {
                 toUpdateReports.push(project);
             }
         }
-        console.log("LocalStorage: ", localStorage.getItem("CurrentReportGenerate"));
 
         if (isFirstRun) {
             showAlertBanner("Ya hay un reporte en proceso de generación. Por favor, espera a que se complete antes de generar otro.", "success");
@@ -1336,8 +1319,3 @@ async function checkAndSchedule(isFirstRun = false) {
     }
 }
 // <-------------------- CHECK AND SCHEDULE --------------------->
-
-
-
-
-

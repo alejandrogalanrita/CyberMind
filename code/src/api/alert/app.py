@@ -247,38 +247,6 @@ class UpdateAlert(Resource):
 api.add_resource(UpdateAlert, "/alert/update-alert")
 
 
-def send_mail(user_email: str, subject: str, body: str) -> None:
-    """
-    Sends an email to the user with the specified subject and body.
-
-    Parameters:
-        user_email (str): The email address of the user to send the email to.
-        subject (str): The subject of the email.
-        body (str): The body of the email in Markdown format.
-
-    Raises:
-        Exception: If there is an error sending the email.
-    """
-
-    html_body = markdown.markdown(body)
-
-    try:
-        msg = EmailMessage()
-        msg["Subject"] = subject
-        msg["From"] = _SENDER_EMAIL
-        msg["To"] = user_email
-        msg.set_content(body)
-        msg.add_alternative(html_body, subtype="html")
-
-        with smtplib.SMTP(_EMAIL_SERVER, _EMAIL_PORT) as server:
-            server.starttls()
-            server.login(_SMTP_USERNAME, _SMTP_PASSWORD)
-            server.send_message(msg)
-        send_log("INFO", user_email, "Email sent to user with subject: {subject}")
-    except Exception:
-        send_log("ERROR", user_email, "Error sending email")
-
-
 class SendReport(Resource):
     """Endpoint to send a report to the user via email."""
 
@@ -314,7 +282,8 @@ class SendReport(Resource):
             send_mail(user_email, subject, body)
             send_log("INFO", user_email, "Report sent to user's email")
 
-            return jsonify({"message": "Report sent successfully"}), 200
+            return {"message": "Report sent successfully"}, 200
+
         except Exception as e:
             send_log("ERROR", user_email, "Error sending report")
             print(f"Error sending report: {str(e)}", flush=True)
@@ -323,6 +292,39 @@ class SendReport(Resource):
 
 
 api.add_resource(SendReport, "/alert/send-report")
+
+
+def send_mail(user_email: str, subject: str, body: str) -> None:
+    """
+    Sends an email to the user with the specified subject and body.
+
+    Parameters:
+        user_email (str): The email address of the user to send the email to.
+        subject (str): The subject of the email.
+        body (str): The body of the email in Markdown format.
+
+    Raises:
+        Exception: If there is an error sending the email.
+    """
+
+    html_body = markdown.markdown(body)
+
+    try:
+        msg = EmailMessage()
+        msg["Subject"] = subject
+        msg["From"] = _SENDER_EMAIL
+        msg["To"] = user_email
+        msg.set_content(body)
+        msg.add_alternative(html_body, subtype="html")
+
+        with smtplib.SMTP(_EMAIL_SERVER, _EMAIL_PORT) as server:
+            server.starttls()
+            server.login(_SMTP_USERNAME, _SMTP_PASSWORD)
+            server.send_message(msg)
+        send_log("INFO", user_email, f"Email sent to user with subject: {subject}")
+    except Exception:
+        send_log("ERROR", user_email, "Error sending email")
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=80, debug=True)

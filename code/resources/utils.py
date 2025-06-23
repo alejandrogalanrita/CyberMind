@@ -1,5 +1,10 @@
-import requests
+"""This module provides utility functions for logging, email validation, and URL safety checks."""
+
 import re
+import requests
+
+from flask import request
+from urllib.parse import urlparse, urljoin
 
 
 def send_log(level, user, message):
@@ -16,9 +21,7 @@ def is_valid_email(email: str) -> bool:
 
     Returns:
         bool: True if the email is valid, False otherwise.
-
     """
-
     pattern = r"(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)"
 
     return re.match(pattern, email) is not None and email != "temp@svaia.com"

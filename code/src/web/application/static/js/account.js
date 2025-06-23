@@ -4,6 +4,7 @@ const CHAT_ROUTE = 'http://localhost:3300/chat';
 
 let toUpdateReports = [];
 
+// <-------------------- SHOW ALERT BANNER --------------------->
 function showAlertBanner(message, type = 'danger') {
   const alertBanner = document.getElementById('alert-banner');
   alertBanner.classList.remove('d-none');
@@ -40,9 +41,9 @@ createProjectModal.addEventListener('hidden.bs.modal', () => {
   const inputs = createProjectModal.querySelectorAll('input, textarea');
   inputs.forEach(input => input.value = '');
 });
+// <-------------------- SHOW ALERT BANNER --------------------->
 
 // <-------------------- RENDER BOT CONTENT --------------------->
-
 function renderBotContent(markdown) {
   const container = document.createElement("div");
 
@@ -61,11 +62,9 @@ function renderBotContent(markdown) {
   });
   return container;
 }
-
 // <-------------------- RENDER BOT CONTENT --------------------->
 
-// <-------------------- GET_ALL_PROJECTS --------------------->
-
+// <-------------------- LOAD ALL PROJECTS --------------------->
 async function loadAllProjects() {
   try {
     const response = await fetch(API_ROUTE + "/get-projects", {
@@ -221,9 +220,9 @@ async function loadAllProjects() {
     console.error("Error en la solicitud");
   }
 }
+// <-------------------- LOAD ALL PROJECTS --------------------->
 
 // <-------------------- UPDATE FILES --------------------->
-
 async function updateFiles(projects) {
   for (const projectName of projects) {
     fetch(API_ROUTE + '/get-report-data', {
@@ -242,7 +241,6 @@ async function updateFiles(projects) {
         return response.json();
       })
       .then(data => {
-        console.log("Respuesta del servidor:", data);
         if (data.ok) {
           showAlertBanner("Reporte generado exitosamente.", "success");
           localStorage.removeItem("CurrentReportGenerate");
@@ -310,18 +308,15 @@ async function updateFiles(projects) {
           }
 
         } else {
-          console.log("Va por el else");
           showAlertBanner("Error al generar el reporte: " + data.message);
         }
       })
       .catch(error => {
-        console.log("Va por el error");
         console.error("Error al generar el reporte:", error);
         showAlertBanner("Error al generar el reporte.");
       });
   }
 }
-
 // <-------------------- UPDATE FILES --------------------->
 
 document.addEventListener("DOMContentLoaded", async function () {
@@ -330,10 +325,8 @@ document.addEventListener("DOMContentLoaded", async function () {
 });
 
 // <-------------------- CHECK AND SCHEDULE ---------------------->
-
 async function checkGenerationStatus() {
   try {
-    console.log("Consultando estado de generación de reportes...");
     const response = await fetch(API_ROUTE + "/check-generation-status", {
       method: "GET",
       credentials: "include",
@@ -345,7 +338,6 @@ async function checkGenerationStatus() {
     }
 
     const result = await response.json();
-    console.log("Estado de generación recibido:", result);
     return result.projects || [];
   } catch (error) {
     console.error("Error al consultar el estado de generación:", error);
@@ -355,7 +347,6 @@ async function checkGenerationStatus() {
 
 async function checkAndSchedule(isFirstRun = false) {
   const projects = await checkGenerationStatus();
-  console.log("Proyectos en proceso de generación:", projects);
 
   if (projects && projects.length > 0) {
     localStorage.setItem("CurrentReportGenerate", JSON.stringify(projects));
@@ -372,7 +363,6 @@ async function checkAndSchedule(isFirstRun = false) {
         };
       };
     }
-    console.log("LocalStorage: ", localStorage.getItem("CurrentReportGenerate"));
 
     if (isFirstRun) {
       showAlertBanner("Ya hay un reporte en proceso de generación. Por favor, espera a que se complete antes de generar otro.", "success");
@@ -387,18 +377,15 @@ async function checkAndSchedule(isFirstRun = false) {
     }
   }
 }
-
 // <-------------------- CHECK AND SCHEDULE ---------------------->
 
 // <-------------------- SHOW MODAL CREATE --------------------->
-
 createProjectModal.addEventListener('show.bs.modal', () => {
   document.getElementById('max_total_vulns').value = 20;
   document.getElementById('min_fixable_ratio').value = 80;
   document.getElementById('max_severity_level').value = 7.0;
   document.getElementById('composite_score').value = 75;
 });
-
 // <-------------------- SHOW MODAL CREATE --------------------->
 
 // <-------------------- RESET MODAL --------------------->
@@ -448,7 +435,6 @@ document.getElementById('reportModal').addEventListener('hidden.bs.modal', () =>
   const copyBtn = document.getElementById("copyReportBtn");
   copyBtn.textContent = "Copiar";
 });
-
 // <-------------------- HIDE MODAL REPORT --------------------->
 
 // <-------------------- CREATE PROJECTS --------------------->
@@ -461,8 +447,6 @@ document.getElementById("registerProject").addEventListener("submit", async func
 
   let fileName = "";
   let fileData = "";
-
-  console.log("File", file);
 
   if (file) {
     fileName = file.name;
@@ -594,7 +578,6 @@ function createReport(userEmail, projectName) {
 
   if (!localStorage.getItem("CurrentReportGenerate")) {
     localStorage.setItem("CurrentReportGenerate", projectName);
-    console.log("Current Report Project Name:", projectName);
   } else {
     showAlertBanner("Ya hay un reporte en proceso de generación. Por favor, espera a que se complete antes de generar otro.");
     return;
@@ -633,7 +616,6 @@ function createReport(userEmail, projectName) {
       return response.json();
     })
     .then(data => {
-      console.log("Respuesta del servidor:", data);
       if (data.ok) {
         showAlertBanner("Reporte generado exitosamente.", "success");
         localStorage.removeItem("CurrentReportGenerate");
@@ -701,12 +683,10 @@ function createReport(userEmail, projectName) {
         }
 
       } else {
-        console.log("Va por el else");
         showAlertBanner("Error al generar el reporte: " + data.message);
       }
     })
     .catch(error => {
-      console.log("Va por el error");
       console.error("Error al generar el reporte:", error);
       showAlertBanner("Error al generar el reporte.");
     });
@@ -782,6 +762,7 @@ confirmDeleteProjects.addEventListener('click', async function (e) {
   }
 });
 // <-------------------- DELETE PROJECTS --------------------->
+
 // <-------------------- EDIT PROJECTS --------------------->
 document.getElementById('project_selector').addEventListener('change', function () {
   const selectedOption = this.options[this.selectedIndex];
@@ -795,7 +776,6 @@ document.getElementById('project_selector').addEventListener('change', function 
   document.getElementById('edit_about_project').value = selectedOption.getAttribute('data-about');
 
   const projectFileName = selectedOption.getAttribute("data-file_name");
-  console.log("Project File Name:", projectFileName);
 
   fetch(API_ROUTE + '/get-criteria', {
     method: 'POST',
@@ -819,7 +799,6 @@ document.getElementById('project_selector').addEventListener('change', function 
       document.getElementById('edit_composite_score').value = data.content.composite_score;
     })
     .catch(error => {
-      console.log("Va por el error");
       console.error("Error al mostrar el modal:", error);
       showAlertBanner("Error al mostrar el modal.");
     });
@@ -869,7 +848,6 @@ document.getElementById('editProjectForm').addEventListener('submit', async func
     formData.append("new-about", true);
   }
 
-  console.log("File selected: ", file);
   if (file) {
     formData.append("project_file", file);
     const reader = new FileReader();
@@ -883,7 +861,6 @@ document.getElementById('editProjectForm').addEventListener('submit', async func
 
   async function enviarSolicitud(formData, file) {
     try {
-      console.log("Enviando solicitud con los siguientes datos:", formData);
       const response = await fetch(API_ROUTE + "/edit-project", {
         method: "POST",
         credentials: 'include',
@@ -1007,4 +984,3 @@ document.getElementById('editProjectForm').addEventListener('submit', async func
   }
 });
 // <-------------------- EDIT PROJECTS --------------------->
-

@@ -38,5 +38,3 @@ CHAT_URI = "http://localhost:3300"
 DB_URI = "http://localhost:3000"
 
 ALERT_URI = "http://localhost:3003"
-
-ALLOWED_ROLES = "admin,usuario"

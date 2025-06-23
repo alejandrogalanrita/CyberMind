@@ -196,20 +196,23 @@ def logout() -> Response:
 @app.get("/")
 def home() -> str:
     """Renders the Home page for the web application."""
-    return render_template("index.html", user=current_user or None)
+    user = current_user if current_user.is_authenticated else None
+    return render_template("index.html", user=user)
 
 
 @app.route("/chat")
 @login_required
 def chat() -> str:
     """Renders the Chat page for the web application."""
-    return render_template("chat.html", user=current_user or None)
+    user = current_user if current_user.is_authenticated else None
+    return render_template("chat.html", user=user or None)
 
 
 @app.get("/cve")
 def cve() -> str:
     """Renders the CVE database page for the web application."""
-    return render_template("cve.html", user=current_user or None)
+    user = current_user if current_user.is_authenticated else None
+    return render_template("cve.html", user=user or None)
 
 
 # Admin routes
@@ -234,14 +237,16 @@ def panel() -> str:
 @login_required
 def notifications() -> str:
     """Renders the notifications panel page for the web application."""
-    return render_template("notification.html", user=current_user, user_role=current_user.role)
+    user = current_user if current_user.is_authenticated else None
+    return render_template("notification.html", user=user, user_role=user.role)
 
 
 # Error handling
 @app.errorhandler(404)
 def page_not_found(e: Exception) -> tuple[Response, int]:
     """Handles 404 errors."""
-    return render_template("404.html", user=current_user or None), 404
+    user = current_user if current_user.is_authenticated else None
+    return render_template("404.html", user=user), 404
 
 
 @app.errorhandler(500)

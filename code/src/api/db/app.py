@@ -41,7 +41,6 @@ import traceback
 
 from datetime import datetime
 from typing import Optional
-from urllib.parse import urljoin, urlparse
 
 import mariadb
 import toml
@@ -207,7 +206,11 @@ class CreateProject(Resource):
             return response, 200
 
         except Exception as e:
-            print(f"Error: {e}", flush=True)
+            send_log(
+                "ERROR",
+                current_user().email,
+                f"Failed to create project '{name}': {str(e)}"
+            )
             return {"status": "error", "message": "Error creating project"}, 500
 
 api.add_resource(CreateProject, "/api/create-project")
@@ -308,6 +311,11 @@ class DeleteProject(Resource):
 
         # Error handling
         else:
+            send_log(
+                "ERROR",
+                current_user().email,
+                f"Attempt to delete non-existent project '{project_name}' by user '{current_user().email}'."
+            )
             return {"status": "error", "message": "Project not found"}, 404
 
 
@@ -389,8 +397,6 @@ class EditProject(Resource):
             return {"status": "error", "message": "Current user cannot edit a project"}, 403
 
         try:
-            print("1", flush=True)
-            print("Request form data:", request.form, flush=True)
             project_name = request.form.get("project_name")
             new_project_name = request.form.get("new_project_name") or None
             new_about = request.form.get("new_about") or None
@@ -437,7 +443,7 @@ class EditProject(Resource):
 
                 # Update the project details
                 db.session.commit()
-                print("3", flush=True)
+
                 # Create response message
                 response = {
                     "status": "success",
@@ -546,7 +552,11 @@ class RegisterUser(Resource):
 
         # Error handling
         except Exception as e:
-            print(f"Error: {e}", flush=True)
+            send_log(
+                "ERROR",
+                current_user().email,
+                f"Failed to register user '{email}': {str(e)}"
+            )
             return {"status": "error", "message": e}, 500
 
 
@@ -606,6 +616,11 @@ class DeleteUser(Resource):
 
         # Error handling
         else:
+            send_log(
+                "ERROR",
+                current_user().email,
+                f"Attempt to delete non-existent user '{email}'."
+            )
             return {"status": "error", "message": "El usuario no se ha encontrado"}, 404
 
 
@@ -617,7 +632,6 @@ class EditUser(Resource):
     @auth_required
     @roles_required("admin")
     def post(self) -> tuple[str, int] | Response:
-        # Check if the user is an admin
         if current_user().role != "admin":
             send_log(
                 "ERROR",
@@ -628,77 +642,70 @@ class EditUser(Resource):
 
         data = request.get_json()
         original_email = data.get("original_email", "").strip()
-
-        # Get the user from the database
         user = Users.query.filter_by(email=original_email).first()
 
         try:
-            if user:
-                if user.email != "admin@svaia.com":
-                    if data.get("password"):
-                        user.user_password = generate_password_hash(data["password"], method="pbkdf2:sha256")
-                    if data.get("role") and data["role"].lower() in ALLOWED_ROLES:
-                        user.role = data["role"].lower().strip()
-                    if data.get("user_name"):
-                        user.user_name = data["user_name"]
-                    if data.get("user_surname"):
-                        user.user_surname = data["user_surname"].strip()
-                    if data.get("email"):
-                        new_email = data["email"].strip()
-                        if new_email != original_email:
-                            existing_user = Users.query.filter_by(email=new_email).first()
-                            if existing_user:
-                                return (
-                                    {"status": "error", "message": "Este email ya está en uso"},
-                                    403,
-                                )
-                        if not is_valid_email(new_email):
-                            return {"status": "error", "message": "Formato de email inválido"}, 403
-                        update_email(original_email, new_email)
-                        user = Users.query.filter_by(email=new_email).first()
-                    if data.get("active") is not None:
-                        new_active = True if data.get("active").lower() == "true" else False
-                        user.active = new_active
-                # Error handling
-                else:
-                    return (
-                        {"status": "error", "message": "El usuario administrador no puede ser modificado"},
-                        403,
-                    )
-
-                # Update the user details
-                db.session.commit()
-                print("2", flush=True)
-
-                send_log(
-                    "INFO",
-                    user.email,
-                    f"User '{user.email}' updated successfully."
-                )
-                print("3", flush=True)
-
-                # Create response message
-                response = {
-                    "status": "success",
-                    "message": "Usuario actualizado correctamente",
-                    "active": f"{new_active}".lower(),
-                }
-
-                return response, 200
-
-            # Error handling
-            else:
+            if not user:
                 return {"status": "error", "message": "Usuario no encontrado"}, 404
 
-        # Error handling
+            if user.email == "admin@svaia.com":
+                # Allow ONLY password change for the admin account
+                new_password = data.get("password")
+                if new_password:
+                    user.user_password = generate_password_hash(new_password)
+                    db.session.commit()
+                    send_log("INFO", user.email, "Admin password updated successfully.")
+                    return {"status": "success", "message": "Contraseña del administrador actualizada"}, 200
+                else:
+                    return {"status": "error", "message": "No se proporcionó nueva contraseña"}, 400
+
+            # For other users, allow full update
+            if data.get("password"):
+                user.user_password = generate_password_hash(data["password"])
+
+            if data.get("role") and data["role"].lower() in app.config.get("ALLOWED_ROLES").split(","):
+                user.role = data["role"].lower().strip()
+
+            if data.get("user_name"):
+                user.user_name = data["user_name"]
+
+            if data.get("user_surname"):
+                user.user_surname = data["user_surname"].strip()
+
+            if data.get("email"):
+                new_email = data["email"].strip()
+                if new_email != original_email:
+                    existing_user = Users.query.filter_by(email=new_email).first()
+                    if existing_user:
+                        return {"status": "error", "message": "Este email ya está en uso"}, 403
+                if not is_valid_email(new_email):
+                    return {"status": "error", "message": "Formato de email inválido"}, 403
+                update_email(original_email, new_email)
+                user = Users.query.filter_by(email=new_email).first()
+
+            if data.get("active") is not None:
+                user.active = data.get("active").lower() == "true"
+
+            db.session.commit()
+            send_log("INFO", user.email, f"User '{user.email}' updated successfully.")
+
+            return {
+                "status": "success",
+                "message": "Usuario actualizado correctamente",
+                "active": str(user.active).lower(),
+            }, 200
+
         except Exception as e:
-            print(f"Error: {e}", flush=True)
-            # Rollback the session in case of error
+            send_log(
+                "ERROR",
+                current_user().email,
+                f"Failed to update user '{original_email}': {str(e)}"
+            )
             db.session.rollback()
             return {"status": "error", "message": "Error al actualizar el usuario"}, 500
 
 
-api.add_resource(EditUser, "/api/edit_user")
+api.add_resource(EditUser, "/api/edit-user")
 
 
 class CheckGenerationStatus(Resource):
@@ -818,8 +825,6 @@ class GetUserNotifications(Resource):
                 db.session.commit()
             return {"notifications": notifications}, 200
         except Exception as e:
-            traceback.print_exc()
-            print(f"Error retrieving notifications: {e}", flush=True)
             return {"message": "Error retrieving notifications"}, 500
 
 
@@ -842,8 +847,6 @@ class GetAllNotifications(Resource):
                 db.session.commit()
             return {"notifications": notifications}, 200
         except Exception as e:
-            traceback.print_exc()
-            print(f"Error retrieving notifications: {e}", flush=True)
             return {"message": "Error retrieving notifications"}, 500
 
 
@@ -888,10 +891,8 @@ def update_email(old_email: str, new_email: str) -> None:
 
         db.session.commit()
 
-    except Exception as e:
-
+    except Exception:
         db.session.rollback()
-        print(f"Error inesperado: {e}")
 
 
 if __name__ == "__main__":
