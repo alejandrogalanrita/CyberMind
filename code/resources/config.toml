@@ -28,3 +28,15 @@ Tu tono debe ser claro, informativo y apropiado para perfiles técnicos como ing
 LOG_FILE = "registry.log"
 
 URI_TEMPLATE = "mariadb+mariadbconnector://{user}:{password}@mariadb:3306/flask_database"
+
+WEB_URI = "http://localhost:8080"
+
+LOGIN_URI = "http://localhost:3030"
+
+CHAT_URI = "http://localhost:3300"
+
+DB_URI = "http://localhost:3000"
+
+ALERT_URI = "http://localhost:3003"
+
+ALLOWED_ROLES = "admin,usuario"

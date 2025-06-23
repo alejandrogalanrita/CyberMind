@@ -1,3 +1,37 @@
+"""
+This module defines the main Flask web application for CyberMind.
+
+It handles user authentication (login, logout), session management, and routing for various pages
+including the home page, chat, CVE database, notifications, and admin/user panels. The application
+uses Flask extensions such as Flask-Bcrypt for password hashing, Flask-Login for user session
+management, and Flask-CORS for cross-origin resource sharing. Configuration is loaded from a TOML
+file and environment variables.
+
+Database interactions are managed via SQLAlchemy models and a custom database engine. The module
+also includes error handlers for common HTTP errors and a session expiration check to enforce
+security.
+
+Routes:
+    - /login: User login (GET/POST)
+    - /logout: User logout
+    - /: Home page
+    - /chat: Chat page (login required)
+    - /cve: CVE database page
+    - /panel: Admin/User panel (login required)
+    - /notification: Notifications panel (login required)
+
+Error Handlers:
+    - 404: Page not found
+    - 500: Internal server error
+
+Session Management:
+    - Session lifetime is set to 30 minutes.
+    - Automatic logout and session clearing after expiration.
+
+Dependencies:
+    - Flask, Flask-Bcrypt, Flask-CORS, Flask-Login, SQLAlchemy, mariadb, toml
+"""
+
 import os
 import time
 
@@ -18,16 +52,18 @@ from resources.utils import send_log, is_safe_url
 
 # Initialize the Flask application
 app = Flask(__name__, template_folder="application/templates", static_folder="application/static")
-CORS(app, supports_credentials=True, origins=["http://localhost:3000"])
 
 # Load configuration from a TOML file
 app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(minutes=30)
 app.config.from_file("resources/config.toml", load=toml.load)
 
+# Set the CORS configuration
+CORS(app, supports_credentials=True, origins=[app.config.get("DB_URI")])
+
 # Set the secret key for session management
 db_user = os.environ.get("DB_USER")
 db_password = os.environ.get("DB_PASSWORD")
-app.config["SQLALCHEMY_DATABASE_URI"] = app.config["URI_TEMPLATE"].format(user=db_user, password=db_password)
+app.config["SQLALCHEMY_DATABASE_URI"] = app.config.get("URI_TEMPLATE").format(user=db_user, password=db_password)
 
 # Initialize the database connection
 db.init_app(app)

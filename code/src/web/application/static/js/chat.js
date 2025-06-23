@@ -4,6 +4,7 @@ const LOGIN = "http://localhost:8080/login";
 
 let toUpdateReports = [];
 
+// <-------------------- SHOW ALERT BANNER --------------------->
 function showAlertBanner(message, type = 'danger') {
     const alertBanner = document.getElementById('alert-banner');
     alertBanner.classList.remove('d-none');
@@ -21,8 +22,10 @@ function showAlertBanner(message, type = 'danger') {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }, 200);
 };
+// <-------------------- SHOW ALERT BANNER --------------------->
 
 /* Chat functionality */
+// <-------------------- SHOW STATUS MESSAGE --------------------->
 function showStatusMessage(text) {
     const statusEl = document.getElementById("statusMessage");
     const chat = document.getElementById("chat");
@@ -32,29 +35,33 @@ function showStatusMessage(text) {
         chat.style.height = "37.5em";
     }
 }
-
+// <-------------------- SHOW STATUS MESSAGE --------------------->
+// <-------------------- CLEAR STATUS MESSAGE --------------------->
 function clearStatusMessage() {
     const statusEl = document.getElementById("statusMessage");
     const chat = document.getElementById("chat");
-    if (statusEl) {{
+    if (statusEl) {
+        {
             chat.style.height = "40em";
             statusEl.classList.textContent = "";
             statusEl.classList.add("d-none");
         }
     }
 }
+// <-------------------- CLEAR STATUS MESSAGE --------------------->
 
 var n = 0;
 var pendingResponse = false;
 const chatContainer = document.getElementById("chat");
 const input = document.getElementById("userInput");
 
+// <-------------------- RENDER BOT CONTENT --------------------->
 function renderBotContent(markdown) {
     const container = document.createElement("div");
 
-    container.style.overflowWrap = "break-word"; 
-    container.style.wordWrap = "break-word";     
-    container.style.whiteSpace = "normal";       
+    container.style.overflowWrap = "break-word";
+    container.style.wordWrap = "break-word";
+    container.style.whiteSpace = "normal";
 
 
     container.innerHTML = marked.parse(markdown);
@@ -67,11 +74,12 @@ function renderBotContent(markdown) {
     });
     return container;
 }
-
+// <-------------------- RENDER BOT CONTENT --------------------->
+// <-------------------- SEND BOT MESSAGE --------------------->
 function sendBotMessage(text, reasoning) {
     if (!chatContainer) return;
 
-    
+
 
     const messageRow = document.createElement("div");
     messageRow.classList.add("row", "d-flex", "justify-content-between", "pe-4", "py-2");
@@ -158,21 +166,25 @@ async function getChatbotResponse(text) {
         return null;
     }
 }
+// <-------------------- SEND BOT MESSAGE --------------------->
 
 // Function to focus on last message
+// <-------------------- SCROLL TO END --------------------->
 function scrollToEnd() {
     chatContainer.scrollTop = chatContainer.scrollHeight;
 }
+// <-------------------- SCROLL TO END --------------------->
 
 // Function to handle user messages
+// <-------------------- SEND USER MESSAGE --------------------->
 function sendUserMessage(text) {
     if (!chatContainer) return;
-    
+
     // Create message container
     const messageRow = document.createElement("div");
     messageRow.classList.add("row", "d-flex", "justify-content-between", "ps-4", "py-2");
     messageRow.id = "chat-user-message-" + n;
-    
+
     // Create icon column
     const iconCol = document.createElement("div");
     iconCol.classList.add("col-1", "ps-sm-4");
@@ -188,7 +200,7 @@ function sendUserMessage(text) {
         <path d="M3 14s-1 0-1-1 1-4 6-4 6 3 6 4-1 1-1 1zm5-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6"/>
     `;
     iconCol.appendChild(icon);
-    
+
     // Create message column
     const messageCol = document.createElement("div");
     messageCol.classList.add("bg-primary", "col-10", "col-sm-11", "rounded", "p-3", "text-white");
@@ -199,8 +211,10 @@ function sendUserMessage(text) {
     // Append message to chat container
     chatContainer.appendChild(messageRow);
 };
+// <-------------------- SEND USER MESSAGE --------------------->
 
 // Function to handle chat input
+// <-------------------- CHAT HANDLER --------------------->
 async function chatHandler() {
     if (pendingResponse) return;
     pendingResponse = true;
@@ -255,24 +269,27 @@ async function chatHandler() {
     pendingResponse = false;
     scrollToEnd();
 }
+// <-------------------- CHAT HANDLER --------------------->
 
 // Initialize chat
+// <-------------------- INITIALIZE CHAT --------------------->
 document.addEventListener("DOMContentLoaded", () => {
     chatContainer.innerHTML = "";
     sendBotMessage("¡Bip Bop! Soy un Bot, ¿en qué puedo ayudarte?");
 });
 
 // Allow sending messages with Enter key
-document.addEventListener("keypress", function(e) {
+document.addEventListener("keypress", function (e) {
     if (e.key === "Enter" && document.activeElement === input) {
         chatHandler();
     }
 });
+// <-------------------- INITIALIZE CHAT --------------------->
 
-// <-------------------- REGISTER PROJECTS --------------------->
+// <-------------------- CREATE PROJECT --------------------->
 document.getElementById("registerProject").addEventListener("submit", async function (e) {
     e.preventDefault();
-  
+
     const projectData = new FormData(this);
     const fileInput = document.getElementById("project_file");
     const file = fileInput.files[0];
@@ -304,7 +321,7 @@ document.getElementById("registerProject").addEventListener("submit", async func
     }
 
     try {
-        const response = await fetch(API_ROUTE + "/create_project", {
+        const response = await fetch(API_ROUTE + "/create-project", {
             method: "POST",
             body: projectData,
             credentials: 'include',
@@ -313,9 +330,9 @@ document.getElementById("registerProject").addEventListener("submit", async func
             window.location.href = LOGIN;
             return;
         }
-    
+
         const data = await response.json();
-    
+
         if (data.status === "success") {
             const projectName = projectData.get("project_name");
             const projectAbout = projectData.get("about");
@@ -326,7 +343,7 @@ document.getElementById("registerProject").addEventListener("submit", async func
             newListItem.dataset.about = projectAbout;
             newListItem.dataset.fileName = fileName;
             newListItem.dataset.fileData = fileData;
-            
+
             newListItem.onclick = (e) => {
                 setActiveItem(e.currentTarget);
             };
@@ -340,10 +357,10 @@ document.getElementById("registerProject").addEventListener("submit", async func
                     </svg>
                 </button>
             `;
-        
+
             const listGroup = document.querySelector(".list-group.d-none.d-lg-block");
             listGroup.insertBefore(newListItem, listGroup.firstChild);
-        
+
             const select = document.getElementById("projectSelect");
             const newOption = document.createElement("option");
             newOption.value = projectName;
@@ -360,9 +377,9 @@ document.getElementById("registerProject").addEventListener("submit", async func
                 newOption.removeAttribute("data-file-name");
                 newOption.removeAttribute("data-file-data");
             }
-            
+
             select.insertBefore(newOption, select.firstChild);
-        
+
             select.value = projectName;
 
             setActiveItem(newListItem);
@@ -384,10 +401,9 @@ document.getElementById("registerProject").addEventListener("submit", async func
         showAlertBanner("Error al crear el proyecto");
     }
 });
-// <-------------------- REGISTER PROJECTS --------------------->
+// <-------------------- CREATE PROJECT --------------------->
 
-// <-------------------- CREATE REPORT --------------------->
-
+// <-------------------- REGISTER REPORT --------------------->
 function createReport(userEmail, projectName) {
     if (!confirm("Aviso, generar un reporte puede tardar unos minutos, durante los cuales el chat estaría inactivo durante ese tiempo. ¿Deseas continuar?")) {
         return;
@@ -410,67 +426,66 @@ function createReport(userEmail, projectName) {
         },
         credentials: 'include',
         body: JSON.stringify({
-            user_email : userEmail,
+            user_email: userEmail,
             project_name: projectName,
         })
     })
-    .then(response => {
-        if (response.status === 401) {
-            window.location.href = "http://localhost:8080/login";
-            return;
-        }
-        return response.json();
-    })
-    .then(data => {
-        console.log("Respuesta del servidor:", data);
-        if (data.ok) {
-            showAlertBanner("Reporte generado exitosamente.", "success");
-            localStorage.removeItem("CurrentReportGenerate");
-            const projectName = data.content.project_name;
-            const projectReportName = data.content.report_name;
-            const projectReportData = data.content.report_data;
-            const projectReportReasoning = data.content.report_reasoning;
+        .then(response => {
+            if (response.status === 401) {
+                window.location.href = "http://localhost:8080/login";
+                return;
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log("Respuesta del servidor:", data);
+            if (data.ok) {
+                showAlertBanner("Reporte generado exitosamente.", "success");
+                localStorage.removeItem("CurrentReportGenerate");
+                const projectName = data.content.project_name;
+                const projectReportName = data.content.report_name;
+                const projectReportData = data.content.report_data;
+                const projectReportReasoning = data.content.report_reasoning;
 
-            const listItems = document.querySelectorAll("#projectList .list-group-item");
-            listItems.forEach(item => {
-                if (item.dataset.projectName === projectName) {
-                    item.dataset.reportName = projectReportName;
-                    item.dataset.reportData = projectReportData;
-                }
-            });
-
-            const options = document.querySelectorAll("#projectSelect option");
-            options.forEach(option => {
-                if (option.value === projectName) {
-                    option.dataset.reportName = projectReportName;
-                    option.dataset.reportData = projectReportData;
-
-                    if (projectReportName && projectReportData) {
-                        option.setAttribute("data-report-name", projectReportName);
-                        option.setAttribute("data-report-data", projectReportData);
-                        option.setAttribute("data-report-reasoning", projectReportReasoning);
-                    } else {
-                        option.removeAttribute("data-report-name");
-                        option.removeAttribute("data-report-data");
-                        option.removeAttribute("data-report-reasoning");
+                const listItems = document.querySelectorAll("#projectList .list-group-item");
+                listItems.forEach(item => {
+                    if (item.dataset.projectName === projectName) {
+                        item.dataset.reportName = projectReportName;
+                        item.dataset.reportData = projectReportData;
                     }
-                }
-            });
+                });
 
-            setFiles();
-        } else {
-            console.log("Va por el else");
-            showAlertBanner("Error al generar el reporte: " + data.message);
-        }
-    })
-    .catch(error => {
-        console.log("Va por el error");
-        console.error("Error al generar el reporte:", error);
-        showAlertBanner("Error al generar el reporte.");
-    });
+                const options = document.querySelectorAll("#projectSelect option");
+                options.forEach(option => {
+                    if (option.value === projectName) {
+                        option.dataset.reportName = projectReportName;
+                        option.dataset.reportData = projectReportData;
+
+                        if (projectReportName && projectReportData) {
+                            option.setAttribute("data-report-name", projectReportName);
+                            option.setAttribute("data-report-data", projectReportData);
+                            option.setAttribute("data-report-reasoning", projectReportReasoning);
+                        } else {
+                            option.removeAttribute("data-report-name");
+                            option.removeAttribute("data-report-data");
+                            option.removeAttribute("data-report-reasoning");
+                        }
+                    }
+                });
+
+                setFiles();
+            } else {
+                console.log("Va por el else");
+                showAlertBanner("Error al generar el reporte: " + data.message);
+            }
+        })
+        .catch(error => {
+            console.log("Va por el error");
+            console.error("Error al generar el reporte:", error);
+            showAlertBanner("Error al generar el reporte.");
+        });
 }
-
-// <-------------------- CREATE REPORT --------------------->
+// <-------------------- REGISTER REPORT --------------------->
 
 // <-------------------- DELETE PROJECTS SELECT --------------------->
 async function deleteProjectSelect() {
@@ -488,7 +503,7 @@ async function deleteProjectSelect() {
     }
 
     try {
-        const response = await fetch(API_ROUTE + '/delete_project', {
+        const response = await fetch(API_ROUTE + '/delete-project', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -537,7 +552,7 @@ async function deleteProject(button) {
     }
 
     try {
-        const response = await fetch(API_ROUTE + '/delete_project', {
+        const response = await fetch(API_ROUTE + '/delete-project', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -605,27 +620,27 @@ function modifyProject() {
         },
         credentials: 'include',
         body: JSON.stringify({ project_name: projectName })
+    })
+        .then(response => {
+            if (response.status === 401) {
+                window.location.href = "http://localhost:8080/login";
+                return;
+            }
+            return response.json();
         })
-    .then(response => {
-        if (response.status === 401) {
-            window.location.href = "http://localhost:8080/login";
-            return;
-        }
-        return response.json();
-    })
-    .then(data => {
-        document.getElementById('edit_max_total_vulns').value = data.content.max_total_vulns;
-        document.getElementById('edit_min_fixable_ratio').value = data.content.min_fixable_ratio;
-        document.getElementById('edit_max_severity_level').value = data.content.max_severity_level;
-        document.getElementById('edit_composite_score').value = data.content.composite_score;
-    })
-    .catch(error => {
-        console.log("Va por el error");
-        console.error("Error al mostrar el modal:", error);
-        showAlertBanner("Error al mostrar el modal.");
-    });
+        .then(data => {
+            document.getElementById('edit_max_total_vulns').value = data.content.max_total_vulns;
+            document.getElementById('edit_min_fixable_ratio').value = data.content.min_fixable_ratio;
+            document.getElementById('edit_max_severity_level').value = data.content.max_severity_level;
+            document.getElementById('edit_composite_score').value = data.content.composite_score;
+        })
+        .catch(error => {
+            console.log("Va por el error");
+            console.error("Error al mostrar el modal:", error);
+            showAlertBanner("Error al mostrar el modal.");
+        });
 
-    
+
     const fileInfoElement = document.getElementById('currentFileInfo');
     if (projectFileName) {
         fileInfoElement.textContent = `Archivo actual: ${projectFileName}`;
@@ -713,7 +728,7 @@ async function submitProjectEdit(e) {
 
     try {
         console.log("Sending form data:", formData)
-        const response = await fetch(API_ROUTE + "/edit_project", {
+        const response = await fetch(API_ROUTE + "/edit-project", {
             method: "POST",
             credentials: 'include',
             body: formData
@@ -728,7 +743,7 @@ async function submitProjectEdit(e) {
         if (result.status === "success") {
             const selectElement = document.getElementById("projectSelect");
             const selectedOption = selectElement.options[selectElement.selectedIndex];
-            
+
             selectedOption.value = newProjectName;
             selectedOption.textContent = newProjectName;
             selectedOption.setAttribute("data-about", newAbout);
@@ -776,7 +791,7 @@ createProjectModal.addEventListener('show.bs.modal', () => {
     document.getElementById('max_severity_level').value = 7.0;
     document.getElementById('composite_score').value = 75;
 });
-    
+
 // <-------------------- SHOW MODAL CREATE --------------------->
 
 // <-------------------- HIDE MODAL CREATE --------------------->
@@ -817,7 +832,7 @@ function setDescription() {
 // <-------------------- SET DESCRIPTION --------------------->
 
 // <-------------------- UPDATE FILES ---------------------->
-            
+
 async function updateFiles(projectNames) {
     for (const projectName of projectNames) {
         fetch(API_ROUTE + '/get-report-data', {
@@ -827,57 +842,57 @@ async function updateFiles(projectNames) {
             },
             credentials: 'include',
             body: JSON.stringify({ project_name: projectName })
+        })
+            .then(response => {
+                if (response.status === 401) {
+                    window.location.href = "http://localhost:8080/login";
+                    return;
+                }
+                return response.json();
             })
-        .then(response => {
-            if (response.status === 401) {
-                window.location.href = "http://localhost:8080/login";
-                return;
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data && data.content) {
-                const projectReportName = data.content.report_name;
-                const projectReportData = data.content.report_data;
-                const projectReportReasoning = data.content.report_reasoning;
+            .then(data => {
+                if (data && data.content) {
+                    const projectReportName = data.content.report_name;
+                    const projectReportData = data.content.report_data;
+                    const projectReportReasoning = data.content.report_reasoning;
 
-                const listItems = document.querySelectorAll("#projectList .list-group-item");
-                listItems.forEach(item => {
-                    if (item.dataset.projectName === projectName) {
-                        item.dataset.reportName = projectReportName;
-                        item.dataset.reportData = projectReportData;
-                    }
-                });
-
-                const options = document.querySelectorAll("#projectSelect option");
-                options.forEach(option => {
-                    if (option.value === projectName) {
-                        option.dataset.reportName = projectReportName;
-                        option.dataset.reportData = projectReportData;
-
-                        if (projectReportName && projectReportData) {
-                            option.setAttribute("data-report-name", projectReportName);
-                            option.setAttribute("data-report-data", projectReportData);
-                            option.setAttribute("data-report-reasoning", projectReportReasoning);
-                        } else {
-                            option.removeAttribute("data-report-name");
-                            option.removeAttribute("data-report-data");
-                            option.removeAttribute("data-report-reasoning");
+                    const listItems = document.querySelectorAll("#projectList .list-group-item");
+                    listItems.forEach(item => {
+                        if (item.dataset.projectName === projectName) {
+                            item.dataset.reportName = projectReportName;
+                            item.dataset.reportData = projectReportData;
                         }
-                    }
-                });
+                    });
 
-                setFiles();
-            } else {
-                console.log("Va por el else");
-                showAlertBanner("Error al generar el reporte: " + (data && data.message ? data.message : 'Respuesta inválida del servidor.'));
-            }
-        })
-        .catch(error => {
-            console.log("Va por el error");
-            console.error("Error al generar el reporte:", error);
-            showAlertBanner("Error al generar el reporte.");
-        });
+                    const options = document.querySelectorAll("#projectSelect option");
+                    options.forEach(option => {
+                        if (option.value === projectName) {
+                            option.dataset.reportName = projectReportName;
+                            option.dataset.reportData = projectReportData;
+
+                            if (projectReportName && projectReportData) {
+                                option.setAttribute("data-report-name", projectReportName);
+                                option.setAttribute("data-report-data", projectReportData);
+                                option.setAttribute("data-report-reasoning", projectReportReasoning);
+                            } else {
+                                option.removeAttribute("data-report-name");
+                                option.removeAttribute("data-report-data");
+                                option.removeAttribute("data-report-reasoning");
+                            }
+                        }
+                    });
+
+                    setFiles();
+                } else {
+                    console.log("Va por el else");
+                    showAlertBanner("Error al generar el reporte: " + (data && data.message ? data.message : 'Respuesta inválida del servidor.'));
+                }
+            })
+            .catch(error => {
+                console.log("Va por el error");
+                console.error("Error al generar el reporte:", error);
+                showAlertBanner("Error al generar el reporte.");
+            });
     }
 }
 
@@ -896,7 +911,7 @@ function setFiles() {
         noFile.style.display = "none";
 
         const fileLinks = document.getElementById("file-links");
-        fileLinks.innerHTML = ''; 
+        fileLinks.innerHTML = '';
 
         // Lista para los elementos de archivo y reporte
         const fileList = document.createElement("ul");
@@ -1050,6 +1065,7 @@ function setFiles() {
         fileLinks.innerHTML = '';
     }
 }
+// <-------------------- SET FILES --------------------->
 // <-------------------- SHOW FILE MODAL --------------------->
 
 function showFile(fileName, fileData) {
@@ -1102,7 +1118,7 @@ function showReport(reportName, reportData, reportReasoning) {
                 reasoningBtn.textContent = "Ocultar razonamiento";
             }
         };
-    }   else {
+    } else {
         const reasoningBtn = document.getElementById("reportReasoningBtn");
         reasoningBtn.classList.add("d-none");
     }
@@ -1127,7 +1143,7 @@ document.getElementById('reportModal').addEventListener('hidden.bs.modal', () =>
 // <-------------------- SET ACTIVE ITEM --------------------->
 function setActiveItem(targetItem) {
     const listItems = document.querySelectorAll(".list-group-item");
-    
+
     listItems.forEach(item => item.classList.remove("active"));
     targetItem.classList.add("active");
 
@@ -1156,45 +1172,45 @@ function activeSelect() {
 };
 // <-------------------- ACTIVE SELECT --------------------->
 
-// <-------------------- INITIAL PROJECTS --------------------->
+// <-------------------- LOAD ALL PROJECTS --------------------->
 async function loadAllProjects() {
     try {
-      const response = await fetch(API_ROUTE + "/get_projects", {
-        method: "GET",
-        credentials: 'include',
-      });
-      if (response.status === 401) {
-          window.location.href = LOGIN;
-          return;
-      }
-  
-      const data = await response.json();
-  
-      if (response.ok) {
-  
-        data.sort((a, b) => new Date(b.creation_date) - new Date(a.creation_date));
-        
-        data.forEach(project => {
-            const projectName = project.project_name;
-            const projectAbout = project.about;
-            const projectFileName = project.file_name;
-            const projectFileData = project.file_data;
-            const projectReportName = project.report_name;
-            const projectReportData = project.report_data;
-            const newListItem = document.createElement("a");
-            newListItem.href = "#";
-            newListItem.className = "list-group-item list-group-item-action";
-            newListItem.dataset.projectName = projectName;
-            newListItem.dataset.about = projectAbout;
-            newListItem.dataset.fileName = projectFileName;
-            newListItem.dataset.fileData = projectFileData;
-            newListItem.dataset.reportName = projectReportName;
-            newListItem.dataset.reportData = projectReportData;
-            newListItem.onclick = (e) => {
-                setActiveItem(e.currentTarget);
-            };
+        const response = await fetch(API_ROUTE + "/get-projects", {
+            method: "GET",
+            credentials: 'include',
+        });
+        if (response.status === 401) {
+            window.location.href = LOGIN;
+            return;
+        }
 
-            newListItem.innerHTML = `
+        const data = await response.json();
+
+        if (response.ok) {
+
+            data.sort((a, b) => new Date(b.creation_date) - new Date(a.creation_date));
+
+            data.forEach(project => {
+                const projectName = project.project_name;
+                const projectAbout = project.about;
+                const projectFileName = project.file_name;
+                const projectFileData = project.file_data;
+                const projectReportName = project.report_name;
+                const projectReportData = project.report_data;
+                const newListItem = document.createElement("a");
+                newListItem.href = "#";
+                newListItem.className = "list-group-item list-group-item-action";
+                newListItem.dataset.projectName = projectName;
+                newListItem.dataset.about = projectAbout;
+                newListItem.dataset.fileName = projectFileName;
+                newListItem.dataset.fileData = projectFileData;
+                newListItem.dataset.reportName = projectReportName;
+                newListItem.dataset.reportData = projectReportData;
+                newListItem.onclick = (e) => {
+                    setActiveItem(e.currentTarget);
+                };
+
+                newListItem.innerHTML = `
                 ${projectName}
                 <button class="trash-container deleteList" data-project-name="${projectName}" onclick="deleteProject(this)">
                     <svg xmlns="http://www.w3.org/2000/svg" class="trash-icon" viewBox="0 0 16 16">
@@ -1203,72 +1219,72 @@ async function loadAllProjects() {
                     </svg>
                 </button>
             `;
-    
-            const listGroup = document.querySelector(".list-group.d-none.d-lg-block");
-            listGroup.insertBefore(newListItem, listGroup.firstChild);
-        
-            const select = document.getElementById("projectSelect");
-            const newOption = document.createElement("option");
-            newOption.value = projectName;
-            newOption.textContent = projectName;
-            newOption.dataset.about = projectAbout;
-            newOption.dataset.fileName = projectFileName;
-            newOption.dataset.fileData = projectFileData;
-            newOption.dataset.reportName = projectReportName;
-            newOption.dataset.reportData = projectReportData;
 
-            if (projectFileName && projectFileData) {
-                newOption.setAttribute("data-file-name", projectFileName);
-                newOption.setAttribute("data-file-data", projectFileData);
-            } else {
-                newOption.removeAttribute("data-file-name");
-                newOption.removeAttribute("data-file-data");
-            }
+                const listGroup = document.querySelector(".list-group.d-none.d-lg-block");
+                listGroup.insertBefore(newListItem, listGroup.firstChild);
 
-             if (projectReportName && projectReportData) {
-                newOption.setAttribute("data-report-name", projectReportName);
-                newOption.setAttribute("data-report-data", projectReportData);
-                newOption.setAttribute("data-report-reasoning", project.report_reasoning || "");
-            } else {
-                newOption.removeAttribute("data-report-name");
-                newOption.removeAttribute("data-report-data");
-                newOption.removeAttribute("data-report-reasoning");
-            }
-            
-            select.insertBefore(newOption, select.firstChild)
-        });
-  
-        const listItems = document.querySelectorAll(".list-group-item");
-        const storedProjectName = localStorage.getItem("activeProject");
-        let activated = false;
-    
-        if (storedProjectName) {
-            listItems.forEach(item => {
-                if (item.dataset.projectName === storedProjectName) {
-                    setActiveItem(item);
-                    activated = true;
+                const select = document.getElementById("projectSelect");
+                const newOption = document.createElement("option");
+                newOption.value = projectName;
+                newOption.textContent = projectName;
+                newOption.dataset.about = projectAbout;
+                newOption.dataset.fileName = projectFileName;
+                newOption.dataset.fileData = projectFileData;
+                newOption.dataset.reportName = projectReportName;
+                newOption.dataset.reportData = projectReportData;
+
+                if (projectFileName && projectFileData) {
+                    newOption.setAttribute("data-file-name", projectFileName);
+                    newOption.setAttribute("data-file-data", projectFileData);
+                } else {
+                    newOption.removeAttribute("data-file-name");
+                    newOption.removeAttribute("data-file-data");
                 }
+
+                if (projectReportName && projectReportData) {
+                    newOption.setAttribute("data-report-name", projectReportName);
+                    newOption.setAttribute("data-report-data", projectReportData);
+                    newOption.setAttribute("data-report-reasoning", project.report_reasoning || "");
+                } else {
+                    newOption.removeAttribute("data-report-name");
+                    newOption.removeAttribute("data-report-data");
+                    newOption.removeAttribute("data-report-reasoning");
+                }
+
+                select.insertBefore(newOption, select.firstChild)
             });
+
+            const listItems = document.querySelectorAll(".list-group-item");
+            const storedProjectName = localStorage.getItem("activeProject");
+            let activated = false;
+
+            if (storedProjectName) {
+                listItems.forEach(item => {
+                    if (item.dataset.projectName === storedProjectName) {
+                        setActiveItem(item);
+                        activated = true;
+                    }
+                });
+            }
+
+            if (!activated && listItems.length > 0) {
+                setActiveItem(listItems[0]);
+            }
+        } else {
+            showAlertBanner("Error al cargar los proyectos");
+            console.error("Error al cargar proyectos:", data);
         }
-    
-        if (!activated && listItems.length > 0) {
-            setActiveItem(listItems[0]);
-        }
-      } else {
-        showAlertBanner("Error al cargar los proyectos");
-        console.error("Error al cargar proyectos:", data);
-      }
     } catch (error) {
         showAlertBanner("Error de conexión al intentar cargar los proyectos");
         console.error("Error en la solicitud");
     }
-  }
+}
 
-document.addEventListener("DOMContentLoaded", async function() {
+document.addEventListener("DOMContentLoaded", async function () {
     await loadAllProjects();
     checkAndSchedule(true);
 });
-// <-------------------- INITIAL PROJECTS --------------------->
+// <-------------------- LOAD ALL PROJECTS --------------------->
 // <-------------------- CHECK AND SCHEDULE --------------------->
 async function checkGenerationStatus() {
     try {
@@ -1321,7 +1337,7 @@ async function checkAndSchedule(isFirstRun = false) {
 }
 // <-------------------- CHECK AND SCHEDULE --------------------->
 
- 
+
 
 
 
