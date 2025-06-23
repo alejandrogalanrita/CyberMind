@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" preserveAspectRatio="none">
+    <!-- Dibujamos el rectángulo con el borde superior curvo -->
+    <path d="M0,100 Q250,50 500,100 V500 H0 Z" fill="#95a5a6" />
+</svg>

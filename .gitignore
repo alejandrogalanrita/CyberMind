@@ -1,0 +1,35 @@
+# Ignore environment files
+.venv
+.venv/
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+.env.*.local
+
+# Ignore Python dependencies
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+venv/
+env/
+*.egg-info/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Ignore IDEs and editors
+.vscode/
+
+# Ignore logs and dumps
+logs/
+*.log
+*.out
+*.pid
+*.seed
+*.cover
+*.dmp
+
+# Ignora DB files
+code/database/mariadb/

@@ -1,0 +1,16 @@
+Flask
+Flask-RESTful
+flask-cors
+Flask-SQLAlchemy
+Flask-Login
+Flask-Praetorian
+Flask-Bcrypt
+Flask-Mail
+toml
+mariadb
+requests
+cyclonedx-python-lib
+fastembed
+faiss-cpu
+cryptography
+markdown

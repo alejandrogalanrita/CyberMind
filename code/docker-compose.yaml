@@ -1,0 +1,170 @@
+services:
+  flaskweb:
+    container_name: web
+    build:
+      dockerfile: ./src/web/Dockerfile
+    ports:
+      - "8080:80"
+    volumes:
+      - ./resources:/app/resources
+      - ./src/web:/app/
+    environment:
+      - DB_HOST=mariadb
+      - DB_PORT=3306
+      - DB_NAME=flask_database
+      - DB_USER=admin
+      - DB_PASSWORD=admin_password
+    depends_on:
+      db:
+        condition: service_healthy
+
+  flaskapidb:
+    container_name: api_db
+    build:
+      dockerfile: ./src/api/db/Dockerfile
+    ports:
+      - "3000:80"
+    volumes:
+      - ./resources:/app/resources
+      - ./src/api/db:/app/
+    environment:
+      - DB_HOST=mariadb
+      - DB_PORT=3306 
+      - DB_NAME=flask_database
+      - DB_USER=api_db
+      - DB_PASSWORD=api_db_pass
+    depends_on:
+      db:
+        condition: service_healthy
+
+  flaskapichat:
+    container_name: api_chat
+    build:
+      dockerfile: ./src/api/chat/Dockerfile
+    ports:
+      - "3300:80"
+    volumes:
+      - ./resources:/app/resources
+      - ./src/api/chat:/app/
+    environment:
+      - DB_HOST=mariadb
+      - DB_PORT=3306
+      - DB_NAME=flask_database
+      - DB_USER=api_chat
+      - DB_PASSWORD=api_chat_pass
+    depends_on:
+      db:
+        condition: service_healthy
+      ai_runner:
+        condition: service_started
+      embedding:
+        condition: service_started
+
+  flaskapilogin:
+    container_name: api_login
+    build:
+      dockerfile: ./src/api/jwt/Dockerfile
+    ports:
+      - "3030:80"
+    volumes:
+      - ./resources:/app/resources
+      - ./src/api/jwt:/app/
+    environment:
+      - DB_HOST=mariadb
+      - DB_PORT=3306
+      - DB_NAME=flask_database
+      - DB_USER=api_login
+      - DB_PASSWORD=api_login_pass
+    depends_on:
+      db:
+        condition: service_healthy
+
+  flaskapialert:
+    container_name: api_alert
+    build:
+      dockerfile: ./src/api/alert/Dockerfile
+    ports:
+      - "3003:80"
+    volumes:
+      - ./resources:/app/resources
+      - ./src/api/alert:/app/
+    environment:
+      - DB_HOST=mariadb
+      - DB_PORT=3306
+      - DB_NAME=flask_database
+      - DB_USER=api_alert
+      - DB_PASSWORD=api_alert_pass
+      - EMAIL_SERVER=mail.smtp2go.com
+      - EMAIL_PORT=587
+      - SENDER_EMAIL=noreply@svaia.alegalan.net
+      - SMTP_USERNAME=svaia
+      - SMTP_PASSWORD=RnaL8plp8jvi0S1K
+    depends_on:
+      db:
+        condition: service_healthy
+
+  flasklog:
+    container_name: log
+    build:
+      dockerfile: ./src/log/Dockerfile
+    ports:
+      - "3330:80"
+    volumes:
+      - ./resources:/app/resources
+      - ./src/log:/app/
+    environment:
+      - DB_HOST=mariadb
+      - DB_PORT=3306
+      - DB_NAME=flask_database
+      - DB_USER=logs
+      - DB_PASSWORD=logs_pass
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: mariadb:latest
+    container_name: mariadb
+    environment:
+      - MARIADB_ROOT_PASSWORD=root_password
+      - MARIADB_DATABASE=flask_database
+      - MARIADB_USER=admin
+      - MARIADB_PASSWORD=admin_password
+      - MARIADB_AUTO_UPGRADE=1
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./database/mariadb:/var/lib/mysql
+      - ./database/dump.sql:/docker-entrypoint-initdb.d/dump.sql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--su-mysql", "--connect", "--innodb_initialized"]
+      start_period: 10s
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: phpmyadmin
+    environment:
+      PMA_HOST: mariadb
+      PMA_USER: admin
+      PMA_PASSWORD: admin_password
+    ports:
+      - "8008:80"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  ai_runner:
+    provider:
+      type: model
+      options:
+        model: ai/qwen3:0.6B-Q4_0
+
+  embedding:
+    provider:
+      type: model
+      options:
+        model: ai/mxbai-embed-large

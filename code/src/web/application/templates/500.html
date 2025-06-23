@@ -1,0 +1,46 @@
+{% extends "layout.html" %}
+
+{% block head %}
+  {{ super() }}
+  <style>
+    .bg-custom {
+      background: linear-gradient(to bottom right, white, #6c757d);
+      min-height: 100vh;
+    }
+  </style>
+{% endblock %}
+
+{% block header %}
+  {{ super() }}
+{% endblock %}
+
+{% block content %}
+<main class="bg-custom d-flex justify-content-center align-items-center">
+  <div class="container py-5">
+    <div class="row justify-content-center">
+      <div class="col-md-8 col-lg-6">
+        <div class="p-5 border border-2 rounded-3 shadow bg-white text-center">
+          <h1 class="display-1 text-danger fw-bold">500</h1>
+          <h2 class="mb-3 text-black fw-semibold">Error Interno del Servidor</h2>
+          <p class="mb-4 text-muted">
+            Parece que algo salió mal en el servidor. Por favor, inténtalo de nuevo y contacta al administrador del sistema si el problema persiste.
+          </p>
+          <a href="/" class="btn btn-primary px-4 py-2">Volver al Inicio</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+{% endblock %}
+
+{% block footer %}
+  {{ super() }}
+{% endblock %}
+
+{% block scripts %}
+  {{ super() }}
+  <script src="{{ url_for('static', filename='js/cve.js') }}"></script>
+  <script>
+    const currentUserEmail = "{{ user.email }}";
+  </script>
+{% endblock %}
