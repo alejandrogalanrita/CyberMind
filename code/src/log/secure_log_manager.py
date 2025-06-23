@@ -11,26 +11,22 @@ from threading import Lock
 
 # Regex para buscar el hash en el log
 RE_HASH = r"'([a-fA-F0-9]{64})'"
+
 # Regex para buscar el mensaje en el log
 RE_MESSAGE = r"\| '[a-fA-F0-9]{64}': (.*?) \|"
 
+
 class SecureLogManager(object):
-    """
-    Class to manage the logging of security events using a secure hash chain.
-    """
+    """Class to manage the logging of security events using a secure hash chain."""
 
     def __init__(
-        self,
-        log_name: str,
-        log_file: str,
-        encripter: Optional[EncriptionMethod] = None,
-        debug_mode: int = 0
+        self, log_name: str, log_file: str, encripter: Optional[EncriptionMethod] = None, debug_mode: int = 0
     ) -> None:
         self.log_name = log_name
         self.log_file = log_file
         self.encripter = encripter or EncriptionUtils()
         self.debug_mode = debug_mode
-        self._lock = Lock()  # Lock for thread safety
+        self._lock = Lock()
         self._debuger_print(f"{self.log_name} - {self.log_file} - {self.encripter} - {self.debug_mode}")
         self.logger = self._configure_logger()
 
@@ -47,7 +43,7 @@ class SecureLogManager(object):
             logger.handlers.clear()
 
         handler = logging.FileHandler(self.log_file, encoding="utf-8")
-        formatter = logging.Formatter('%(asctime)s: %(levelname)-8s | %(message)s |', datefmt='%Y-%m-%d %H:%M:%S')
+        formatter = logging.Formatter("%(asctime)s: %(levelname)-8s | %(message)s |", datefmt="%Y-%m-%d %H:%M:%S")
         handler.setFormatter(formatter)
         logger.addHandler(handler)
         return logger
@@ -57,7 +53,7 @@ class SecureLogManager(object):
         if not bu.file_exists(self.log_file):
             bu.create_file(self.log_file)
             self._debuger_print("Fichero creado.")
-        if  bu.file_empty(self.log_file):
+        if bu.file_empty(self.log_file):
             time = bu.get_readable_time()
             message = f"Inicialización del log en el tiempo {time}"
             self._write_log("INFO", None, message)
@@ -105,14 +101,14 @@ class SecureLogManager(object):
     def get_last_log(self) -> Optional[str]:
         if not bu.file_exists(self.log_file):
             return None
-        with open(self.log_file, 'r', encoding="utf-8") as f:
+        with open(self.log_file, "r", encoding="utf-8") as f:
             lines = f.readlines()
             return lines[-1].strip() if lines else None
 
     def _get_hash_chain(self) -> list[str]:
         if not bu.file_exists(self.log_file):
             return []
-        with open(self.log_file, 'r', encoding="utf-8") as f:
+        with open(self.log_file, "r", encoding="utf-8") as f:
             lines = f.readlines()
             result = []
             for line in lines:
@@ -128,7 +124,7 @@ class SecureLogManager(object):
     def _get_message_chain(self) -> list[str]:
         if not bu.file_exists(self.log_file):
             return []
-        with open(self.log_file, 'r', encoding="utf-8") as f:
+        with open(self.log_file, "r", encoding="utf-8") as f:
             lines = f.readlines()
             result = []
             for line in lines:

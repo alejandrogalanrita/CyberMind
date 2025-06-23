@@ -2,7 +2,7 @@
 
 Proyecto CyberMind: SVAIA - SmartTrack
 
-![diagrama](diagram.png)
+![diagrama](diagram.svg)
 
 ## Aplicación Web de SVAIA
 
@@ -30,7 +30,6 @@ La aplicación web ofrece un gran número de funcionalidades acordes a la especi
 
 > [!NOTE]
 > El fichero `example_sbom.json` incluido permite probar esta funcionalidad
-
 > [!TIP]
 > Editar un proyecto para adjuntar un SBOM actualizado habilita la opción de regenerar un nuevo reporte
 
@@ -86,6 +85,15 @@ Para parar la aplicación ejecutar
 ```bash
 docker compose down
 ```
+
+## Uso
+
+Por defecto, la aplicación cuenta con un usuario administrador con las siguientes credenciales:
+
+- **Usuario:** `admin`
+- **Contraseña:** `admin_pass`
+
+
 
 ## Autores
 

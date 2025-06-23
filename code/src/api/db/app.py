@@ -1,95 +1,118 @@
 """
-REST API for SVAIA Web application.
+This module defines the main Flask REST API application for CyberMind.
 
-Features:
-    Creating, editing & deleting both Users and Projects.
-    AI Chat functionality via communication with LLM provider.
+It provides endpoints for managing users, projects, CVE data, notifications, and authentication.
+The application uses Flask extensions such as Flask-Bcrypt for password hashing, Flask-CORS for
+cross-origin resource sharing, Flask-Praetorian for JWT-based authentication, and Flask-RESTful
+for API resource routing. Configuration is loaded from a TOML file and environment variables.
+
+Database interactions are managed via SQLAlchemy models and a custom database engine. The module
+also includes utility functions for logging and email validation.
+
+API Endpoints:
+    - /api/create-project: Create a new project
+    - /api/delete-project: Delete a project
+    - /api/get-all-projects: Retrieve all projects (admin only)
+    - /api/get-all-deleted-projects: Retrieve all deleted projects (admin only)
+    - /api/get-projects: Retrieve projects for the current user
+    - /api/edit-project: Edit a project
+    - /api/get-all-users: Retrieve all users (admin only)
+    - /api/register-user: Register a new user (admin only)
+    - /api/delete-user: Delete a user (admin only)
+    - /api/edit_user: Edit a user (admin only)
+    - /api/check-generation-status: Check report generation status for current user
+    - /api/check-generation-status/admin: Check report generation status (admin only)
+    - /api/get-report-data: Retrieve report data for a project
+    - /api/cve: Retrieve CVE data
+    - /api/get-criteria: Retrieve project criteria
+    - /api/notification: Retrieve notifications for current user
+    - /api/notification/admin: Retrieve all notifications (admin only)
+
+Authentication & Authorization:
+    - JWT-based authentication using Flask-Praetorian
+    - Role-based access control for admin endpoints
+
+Dependencies:
+    - Flask, Flask-Bcrypt, Flask-CORS, Flask-Praetorian, Flask-RESTful, SQLAlchemy, mariadb, toml
 """
 
-# Imports
 import os
-import re
-import time
-import json
-import toml
-import mariadb
-import requests
-import numpy as np
 import traceback
-from urllib.parse import urlparse, urljoin
+
 from datetime import datetime
-from typing import Optional, Any
-from flask import Flask, request, redirect, url_for, jsonify, make_response, current_app
+from typing import Optional
+
+import mariadb
+import toml
+from flask import Flask, Response, redirect, request, url_for
+from flask_bcrypt import Bcrypt, check_password_hash, generate_password_hash
 from flask_cors import CORS
+from flask_praetorian import Praetorian, auth_required, current_user, roles_required
 from flask_restful import Api, Resource
-from flask_sqlalchemy import SQLAlchemy
-from flask_praetorian import Praetorian, current_user, auth_required, roles_required
 
-# from werkzeug.security import generate_password_hash, check_password_hash
-from flask_bcrypt import Bcrypt, generate_password_hash, check_password_hash
-
-from resources.dbmodel.database_classes import Users, Projects, DeletedProjects, ChatHistory, CVE, Notifications
+from resources.dbmodel.database_classes import CVE, DeletedProjects, Notifications, Projects, Users
 from resources.dbmodel.database_engine import db
+from resources.utils import send_log, is_valid_email
 
-import base64
-
-from resources.utils import send_log
-
+# Initialize the Flask application
 app = Flask(__name__)
 
-# Load configuration from config.toml
+# Load configuration from a TOML file
 app.config.from_file("resources/config.toml", load=toml.load)
 
+# Set the secret key for session management
 db_user = os.environ.get("DB_USER")
 db_password = os.environ.get("DB_PASSWORD")
+app.config["SQLALCHEMY_DATABASE_URI"] = app.config.get("URI_TEMPLATE").format(user=db_user, password=db_password)
 
-uri_template = "mariadb+mariadbconnector://{user}:{password}@mariadb:3306/flask_database"
-
-app.config['SQLALCHEMY_DATABASE_URI'] = uri_template.format(
-    user=db_user,
-    password=db_password
-)
-
-# Instantiate the database connection
+# Initialize the database connection
 db.init_app(app)
 
-# Initialize Flask app
-CORS(app, allow_origins=["http://localhost:8080"], supports_credentials=True)
-api = Api(app)
-
-ALLOWED_ROLES = app.config.get("ALLOWED_ROLES").split(",")
-
-# Initialize Bcrypt for password hashing
+# Initialize the Bcrypt instance for password hashing
 bcrypt = Bcrypt(app)
 
+# Set the CORS configuration
+CORS(app, supports_credentials=True, origins=[app.config.get("WEB_URI")])
 
+# Initialize Flask RESTful API
+api = Api(app)
+
+
+# Initialize the Praetorian instance
 class CustomPraetorian(Praetorian):
     """Custom Praetorian to support cookie-based token retrieval and RS256"""
 
     def read_token_from_header(self) -> Optional[str]:
-        # 1. Try cookie first
-        token = request.cookies.get('access_token')
+        """Override to read JWT token from cookies if available, otherwise from headers."""
+        token = request.cookies.get("access_token")
         if token:
             return token
-        # 2. Fallback to header
+
         return super().read_token_from_header()
 
     def _verify_password(self, raw_password: str, hashed_password: str) -> bool:
-        # Optional: Override if needed
+        """
+        Override to use Flask-Bcrypt for password verification.
+
+        Parameters:
+            raw_password (str): The raw password provided by the user.
+            hashed_password (str): The hashed password stored in the database.
+
+        Returns:
+            bool: True if the password matches, False otherwise.
+        """
         return check_password_hash(hashed_password, raw_password)
 
     def _get_jwt_token(self) -> str:
         return request.cookies.get("access_token") or self.extract_jwt_from_header()
 
+
 guard = CustomPraetorian()
 guard.init_app(app, Users)
 
+
 def create_admin_user() -> None:
-    """
-    Creates the default admin user if it does not exist.
-    This function checks if the admin user already exists in the database.
-    If not, it creates a new admin user with predefined credentials.
-    """
+    """Creates an admin user if it does not already exist."""
     try:
         with app.app_context():
             # Check if the admin user already exists
@@ -111,47 +134,16 @@ def create_admin_user() -> None:
     except mariadb.Error as e:
         print(f"Error creating admin, error: {e}", flush=True)
 
+# Create the admin user if it does not exist
 create_admin_user()
-
-# Function to check if the email is valid
-def is_valid_email(email: str) -> bool:
-    """
-    Verifies the format of the email address.
-
-    Parameters:
-        email (str): The email address to be validated.
-
-    Returns:
-        bool: True if the email is valid, False otherwise.
-    """
-
-    pattern = r"(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)"
-
-    return re.match(pattern, email) is not None and email != "temp@svaia.com"
-
-
-# Function to check if the URL is safe for redirection
-def is_safe_url(target: str) -> bool:
-    """
-    Verifies if the target URL is safe for redirection.
-
-    Parameters:
-        target (str): The target URL to be validated.
-
-    Returns:
-        bool: True if the URL is safe, False otherwise.
-    """
-    ref_url = urlparse(request.host_url)
-    test_url = urlparse(urljoin(request.host_url, target))
-
-    return test_url.scheme in ("http", "https") and ref_url.netloc == test_url.netloc
 
 
 # Project managing functions
-class ProjectCreate(Resource):
+class CreateProject(Resource):
     """Handles project creation"""
     @auth_required
-    def post(self) -> tuple[str, int]:
+    def post(self) -> tuple[dict[str, str], int]:
+        """Handles the creation of a new project."""
         if not current_user().active:
             send_log(
                 "ERROR",
@@ -168,15 +160,11 @@ class ProjectCreate(Resource):
             about = request.form.get("about")
             file = request.files.get("project_file")
 
-            print(f"Project name: {name}, About: {about}, File: {file}", flush=True)
-
             # Obtener etiquetas del formulario
             max_total_vulns = float(request.form.get('max_total_vulns'))
             min_fixable_ratio = float(request.form.get('min_fixable_ratio'))
             max_severity_level = float(request.form.get('max_severity_level'))
             composite_score = float(request.form.get('composite_score'))
-
-            print(f"max_total_vulns: {max_total_vulns}, min_fixable_ratio: {min_fixable_ratio}, max_severity_level: {max_severity_level}, composite_score: {composite_score}", flush=True)
 
             file_name = file.filename if file else None
             file_data = file.read() if file else None
@@ -218,16 +206,21 @@ class ProjectCreate(Resource):
             return response, 200
 
         except Exception as e:
-            print(f"Error: {e}", flush=True)
+            send_log(
+                "ERROR",
+                current_user().email,
+                f"Failed to create project '{name}': {str(e)}"
+            )
             return {"status": "error", "message": "Error creating project"}, 500
 
-api.add_resource(ProjectCreate, "/api/create_project")
+api.add_resource(CreateProject, "/api/create-project")
 
 
-class ProjectDelete(Resource):
+class DeleteProject(Resource):
     """Handles project deletion"""
     @auth_required
-    def post(self) -> tuple[str, int]:
+    def post(self) -> tuple[dict[str, str], int]:
+        """Handles the deletion of a project."""
         # Check if the user is active
         if not current_user().active:
             send_log(
@@ -318,19 +311,24 @@ class ProjectDelete(Resource):
 
         # Error handling
         else:
+            send_log(
+                "ERROR",
+                current_user().email,
+                f"Attempt to delete non-existent project '{project_name}' by user '{current_user().email}'."
+            )
             return {"status": "error", "message": "Project not found"}, 404
 
-# Register the ProjectDelete resource with the API
-api.add_resource(ProjectDelete, "/api/delete_project")
+
+api.add_resource(DeleteProject, "/api/delete-project")
 
 
 class GetAllProjects(Resource):
     """Retrieves the projects associated with the current user."""
     @auth_required
     @roles_required("admin")
-    def get(self) -> tuple[str, int]:
+    def get(self) -> tuple[list[str], int]:
+        """Retrieves all projects from the database."""
         projects_list = Projects.query.order_by(Projects.creation_date.desc()).all()
-
         result = [project.to_dict() for project in projects_list]
 
         send_log(
@@ -341,15 +339,15 @@ class GetAllProjects(Resource):
 
         return result, 200
 
-# Register the GetAllProjects resorce with the API
-api.add_resource(GetAllProjects, "/api/get_all_projects")
+
+api.add_resource(GetAllProjects, "/api/get-all-projects")
 
 
 class GetAllDeletedProjects(Resource):
     """Retrieves the deleted projects associated with the current user."""
     @auth_required
     @roles_required("admin")
-    def get(self) -> tuple[str, int]:
+    def get(self) -> tuple[list[str], int]:
         deleted_projects_list = DeletedProjects.query.order_by(DeletedProjects.deletion_date.desc()).all()
         result = [project.to_dict() for project in deleted_projects_list]
 
@@ -361,14 +359,15 @@ class GetAllDeletedProjects(Resource):
 
         return result, 200
 
-# Register the GetAllDeletedProjects resource with the API
-api.add_resource(GetAllDeletedProjects, "/api/get_all_deleted_projects")
+
+api.add_resource(GetAllDeletedProjects, "/api/get-all-deleted-projects")
 
 
 class GetProjects(Resource):
     """Retrieves the projects associated with the current user."""
     @auth_required
-    def get(self)  -> tuple[str, int]:
+    def get(self)  -> tuple[list[str], int]:
+        """Retrieves all projects associated with the current user."""
         projects_list = Projects.query.filter_by(email=current_user().email).order_by(Projects.creation_date.desc()).all()
         result = [project.to_dict() for project in projects_list]
 
@@ -380,27 +379,24 @@ class GetProjects(Resource):
 
         return result, 200
 
-# Register the GetAllDeletedProjects resource with the API
-api.add_resource(GetProjects, "/api/get_projects")
+
+api.add_resource(GetProjects, "/api/get-projects")
 
 
-class ProjectEdit(Resource):
+class EditProject(Resource):
     """Handles project editing."""
     @auth_required
-    def post(self) -> tuple[str, int]:
+    def post(self) -> tuple[dict[str, str], int]:
         # Check if the user is active
         if current_user().active == False:
-
             send_log(
                 "ERROR",
                 current_user().email,
                 "A deleted user attempted to edit a project."
             )
-
             return {"status": "error", "message": "Current user cannot edit a project"}, 403
+
         try:
-            print("1", flush=True)
-            print("Request form data:", request.form, flush=True)
             project_name = request.form.get("project_name")
             new_project_name = request.form.get("new_project_name") or None
             new_about = request.form.get("new_about") or None
@@ -421,9 +417,7 @@ class ProjectEdit(Resource):
             new_file_data = file.read() if file else None
 
             # Get the project from the database
-            print(f"Email: {email}, Project Name: {project_name}, New Project Name: {new_project_name}, New Email: {new_email}, New About: {new_about}, New File Name: {new_file_name}", flush=True)
             project = Projects.query.filter_by(email=email, project_name=project_name).first()
-            print(f"2", project, flush=True)
             if project:
                 modification_date = datetime.now()
                 if new_project_name is not None:
@@ -449,7 +443,7 @@ class ProjectEdit(Resource):
 
                 # Update the project details
                 db.session.commit()
-                print("3", flush=True)
+
                 # Create response message
                 response = {
                     "status": "success",
@@ -478,8 +472,8 @@ class ProjectEdit(Resource):
             )
             return {"status": "error", "message": "Error updating project"}, 500
 
-# Register the ProjectEdit resource with the API
-api.add_resource(ProjectEdit, "/api/edit_project")
+
+api.add_resource(EditProject, "/api/edit-project")
 
 
 # User managing functions
@@ -487,7 +481,8 @@ class GetAllUsers(Resource):
     """Returns all the registerd users"""
     @auth_required
     @roles_required("admin")
-    def get(self) -> tuple[str, int]:
+    def get(self) -> tuple[list[str], int] | Response:
+        """Retrieves all users from the database."""
         # Check if the user is an admin
         if current_user().role != "admin":
             return redirect(url_for("home"))
@@ -503,13 +498,15 @@ class GetAllUsers(Resource):
 
         return result, 200
 
-api.add_resource(GetAllUsers, "/api/get_all_users")
 
-class UserRegister(Resource):
+api.add_resource(GetAllUsers, "/api/get-all-users")
+
+
+class RegisterUser(Resource):
     """Handles user registration"""
     @auth_required
     @roles_required("admin")
-    def post(self) -> Optional[tuple[str, int]]:
+    def post(self) -> Optional[tuple[str, int]] | Response:
         # Check if the user is an admin
         if current_user().role != "admin":
 
@@ -528,7 +525,7 @@ class UserRegister(Resource):
             # Check if the role is valid
             role = request.form.get("role").lower()
 
-            if role not in ALLOWED_ROLES:
+            if role not in app.config.get("ALLOWED_ROLES").split(","): 
                 return {"status": "error", "message": "Invalid role"}, 400
 
 
@@ -555,18 +552,23 @@ class UserRegister(Resource):
 
         # Error handling
         except Exception as e:
-            print(f"Error: {e}", flush=True)
+            send_log(
+                "ERROR",
+                current_user().email,
+                f"Failed to register user '{email}': {str(e)}"
+            )
             return {"status": "error", "message": e}, 500
 
-# Register the UserRegister resource with the API
-api.add_resource(UserRegister, "/api/register_user")
+
+api.add_resource(RegisterUser, "/api/register-user")
 
 
-class UserDelete(Resource):
+class DeleteUser(Resource):
     """Handles user deletion"""
     @auth_required
     @roles_required("admin")
-    def post(self) -> tuple[str, int]|None:
+    def post(self) -> tuple[str, int] | Response:
+        """Handles the deletion of a user."""
         # Check if the user is an admin
         if current_user().role != "admin":
 
@@ -614,27 +616,251 @@ class UserDelete(Resource):
 
         # Error handling
         else:
+            send_log(
+                "ERROR",
+                current_user().email,
+                f"Attempt to delete non-existent user '{email}'."
+            )
             return {"status": "error", "message": "El usuario no se ha encontrado"}, 404
 
-api.add_resource(UserDelete, "/api/delete_user")
+
+api.add_resource(DeleteUser, "/api/delete-user")
 
 
-# Update email function
+class EditUser(Resource):
+    """Handles user editing"""
+    @auth_required
+    @roles_required("admin")
+    def post(self) -> tuple[str, int] | Response:
+        if current_user().role != "admin":
+            send_log(
+                "ERROR",
+                current_user().email,
+                "A non-admin user attempted to edit a user."
+            )
+            return redirect(url_for("home"))
+
+        data = request.get_json()
+        original_email = data.get("original_email", "").strip()
+        user = Users.query.filter_by(email=original_email).first()
+
+        try:
+            if not user:
+                return {"status": "error", "message": "Usuario no encontrado"}, 404
+
+            if user.email == "admin@svaia.com":
+                # Allow ONLY password change for the admin account
+                new_password = data.get("password")
+                if new_password:
+                    user.user_password = generate_password_hash(new_password)
+                    db.session.commit()
+                    send_log("INFO", user.email, "Admin password updated successfully.")
+                    return {"status": "success", "message": "Contraseña del administrador actualizada"}, 200
+                else:
+                    return {"status": "error", "message": "No se proporcionó nueva contraseña"}, 400
+
+            # For other users, allow full update
+            if data.get("password"):
+                user.user_password = generate_password_hash(data["password"])
+
+            if data.get("role") and data["role"].lower() in app.config.get("ALLOWED_ROLES").split(","):
+                user.role = data["role"].lower().strip()
+
+            if data.get("user_name"):
+                user.user_name = data["user_name"]
+
+            if data.get("user_surname"):
+                user.user_surname = data["user_surname"].strip()
+
+            if data.get("email"):
+                new_email = data["email"].strip()
+                if new_email != original_email:
+                    existing_user = Users.query.filter_by(email=new_email).first()
+                    if existing_user:
+                        return {"status": "error", "message": "Este email ya está en uso"}, 403
+                if not is_valid_email(new_email):
+                    return {"status": "error", "message": "Formato de email inválido"}, 403
+                update_email(original_email, new_email)
+                user = Users.query.filter_by(email=new_email).first()
+
+            if data.get("active") is not None:
+                user.active = data.get("active").lower() == "true"
+
+            db.session.commit()
+            send_log("INFO", user.email, f"User '{user.email}' updated successfully.")
+
+            return {
+                "status": "success",
+                "message": "Usuario actualizado correctamente",
+                "active": str(user.active).lower(),
+            }, 200
+
+        except Exception as e:
+            send_log(
+                "ERROR",
+                current_user().email,
+                f"Failed to update user '{original_email}': {str(e)}"
+            )
+            db.session.rollback()
+            return {"status": "error", "message": "Error al actualizar el usuario"}, 500
+
+
+api.add_resource(EditUser, "/api/edit-user")
+
+
+class CheckGenerationStatus(Resource):
+    """Check the status of a project report generation task."""
+
+    @auth_required
+    def get(self) -> tuple[dict[str, list[str]], int]:
+        """Check the status of a project report generation task."""
+        projects = Projects.query.filter_by(email=current_user().email).where(Projects.in_process == True).all()
+
+        return {"projects": [project.project_name for project in projects]}, 200
+
+
+api.add_resource(CheckGenerationStatus, "/api/check-generation-status")
+
+
+class CheckGenerationStatusAdmin(Resource):
+    """Check the status of a project report generation task."""
+
+    @auth_required
+    @roles_required("admin")
+    def get(self):
+        """Check the status of a project report generation task."""
+
+        projects = Projects.query.where(Projects.in_process == True).all()
+
+        return {"projects": [[project.email, project.project_name] for project in projects]}, 200
+
+
+api.add_resource(CheckGenerationStatusAdmin, "/api/check-generation-status/admin")
+
+
+class GetReportData(Resource):
+    """Check the status of a project report generation task."""
+
+    @auth_required
+    def post(self) -> tuple[dict[str, str], int]:
+        """Check the status of a project report generation task."""
+        if request.is_json:
+            data = request.get_json()
+            project_name = data.get("project_name")
+            user_email = data.get("email", current_user().email)
+        project = Projects.query.filter_by(email=user_email, project_name=project_name).first()
+
+        payload = {
+            "report_name": project.report_name,
+            "report_data": project.report_data.decode('utf-8', errors='ignore') if project.report_data else None,
+            "report_reasoning": project.report_reasoning.decode('utf-8', errors='ignore') if project.report_reasoning else None,
+        }
+
+        return {"ok": True, "content": payload}, 200
+
+
+api.add_resource(GetReportData, "/api/get-report-data")
+
+
+class CVEResource(Resource):
+    """Handles CVE data retrieval and embedding"""
+    def get(self) -> tuple[list[str], int]:
+        cves = CVE.query.all()
+        result = []
+        for cve in cves:
+            result.append({
+                "cve_id": cve.cve_id,
+                "description": cve.description,
+                "published_date": cve.published_date.isoformat() if cve.published_date else None,
+                "last_modified_date": cve.last_modified_date.isoformat() if cve.last_modified_date else None,
+                "cvss_score": cve.cvss_score,
+                "vector_string": cve.vector_string,
+                "severity": cve.severity,
+                "cwe_id": cve.cwe_id,
+            })
+
+        return result, 200
+
+
+api.add_resource(CVEResource, "/api/cve")
+
+
+class GetCriteria(Resource):
+    """Handles retrieval of rules for CVE embedding"""
+    @auth_required
+    def post(self) -> tuple[dict[str, float], int]:
+        """Check the status of a project report generation task."""
+        if request.is_json:
+            data = request.get_json()
+            project_name = data.get("project_name")
+            user_email = data.get("email", current_user().email)
+        project = Projects.query.filter_by(email=user_email, project_name=project_name).first()
+
+        payload = {
+            "max_total_vulns": project.max_total_vulns,
+            "min_fixable_ratio": project.min_fixable_ratio,
+            "max_severity_level": project.max_severity_level,
+            "composite_score": project.composite_score,
+        }
+
+        return {"ok": True, "content": payload}, 200
+
+
+api.add_resource(GetCriteria, "/api/get-criteria")
+
+
+class GetUserNotifications(Resource):
+    """Handles notifications"""
+
+    @auth_required
+    def get(self) -> tuple[str, int]:
+        """Retrieves notifications for the current user."""
+        try:
+            user_notifications = Notifications.query.filter_by(user_email=current_user().email).all()
+            notifications = [notification.to_dict() for notification in user_notifications]
+            if not notifications:
+                return {"message": "No notifications available"}, 200
+            else:
+                Notifications.query.filter_by(user_email=current_user().email).update({"is_read": True})
+                db.session.commit()
+            return {"notifications": notifications}, 200
+        except Exception as e:
+            return {"message": "Error retrieving notifications"}, 500
+
+
+api.add_resource(GetUserNotifications, "/api/notification")
+
+
+class GetAllNotifications(Resource):
+    """Handles notifications for admin users"""
+    @auth_required
+    @roles_required("admin")
+    def get(self) -> tuple[list[dict[str, str]], int]:
+        """Retrieves all notifications for admin users."""
+        try:
+            user_notifications = Notifications.query.all()
+            notifications = [notification.to_dict() for notification in user_notifications]
+            if not notifications:
+                return {"message": "No notifications available"}, 200
+            else:
+                Notifications.query.filter_by(user_email=current_user().email).update({"is_read": True})
+                db.session.commit()
+            return {"notifications": notifications}, 200
+        except Exception as e:
+            return {"message": "Error retrieving notifications"}, 500
+
+
+api.add_resource(GetAllNotifications, "/api/notification/admin")
+
+
 @auth_required
 def update_email(old_email: str, new_email: str) -> None:
     """
-    Updates the email address in the database for both users and projects.
-    This function first creates a temporary user with a dummy email address to avoid conflicts
-    during the update process. It then updates the email address in both the Users and Projects
-    tables. Finally, it deletes the temporary user and commits the changes to the database.
-    If any error occurs during the process, it rolls back the changes to maintain data integrity.
+    Updates the email of a user and their associated projects.
 
     Parameters:
-        old_email (str): The old email address to be replaced.
-        new_email (str): The new email address to be set.
-
-    Returns:
-        None
+        old_email (str): The current email of the user.
+        new_email (str): The new email to be set for the user.
     """
     try:
         temp_email = "temp@svaia.com"
@@ -665,236 +891,9 @@ def update_email(old_email: str, new_email: str) -> None:
 
         db.session.commit()
 
-    except Exception as e:
-
+    except Exception:
         db.session.rollback()
-        print(f"Error inesperado: {e}")
 
-
-class UserEdit(Resource):
-    """Handles user editing"""
-    @auth_required
-    @roles_required("admin")
-    def post(self) -> tuple[str, int]|None:
-        # Check if the user is an admin
-        if current_user().role != "admin":
-            send_log(
-                "ERROR",
-                current_user().email,
-                "A non-admin user attempted to edit a user."
-            )
-            return redirect(url_for("home"))
-
-        data = request.get_json()
-        original_email = data.get("original_email", "").strip()
-
-        # Get the user from the database
-        user = Users.query.filter_by(email=original_email).first()
-
-        try:
-            if user:
-                if user.email != "admin@svaia.com":
-                    if data.get("password"):
-                        user.user_password = generate_password_hash(data["password"], method="pbkdf2:sha256")
-                    if data.get("role") and data["role"].lower() in ALLOWED_ROLES:
-                        user.role = data["role"].lower().strip()
-                    if data.get("user_name"):
-                        user.user_name = data["user_name"]
-                    if data.get("user_surname"):
-                        user.user_surname = data["user_surname"].strip()
-                    if data.get("email"):
-                        new_email = data["email"].strip()
-                        if new_email != original_email:
-                            existing_user = Users.query.filter_by(email=new_email).first()
-                            if existing_user:
-                                return (
-                                    {"status": "error", "message": "Este email ya está en uso"},
-                                    403,
-                                )
-                        if not is_valid_email(new_email):
-                            return {"status": "error", "message": "Formato de email inválido"}, 403
-                        update_email(original_email, new_email)
-                        user = Users.query.filter_by(email=new_email).first()
-                    if data.get("active") is not None:
-                        new_active = True if data.get("active").lower() == "true" else False
-                        user.active = new_active
-                # Error handling
-                else:
-                    return (
-                        {"status": "error", "message": "El usuario administrador no puede ser modificado"},
-                        403,
-                    )
-
-                # Update the user details
-                db.session.commit()
-                print("2", flush=True)
-
-                send_log(
-                    "INFO",
-                    user.email,
-                    f"User '{user.email}' updated successfully."
-                )
-                print("3", flush=True)
-
-                # Create response message
-                response = {
-                    "status": "success",
-                    "message": "Usuario actualizado correctamente",
-                    "active": f"{new_active}".lower(),
-                }
-
-                return response, 200
-
-            # Error handling
-            else:
-                return {"status": "error", "message": "Usuario no encontrado"}, 404
-
-        # Error handling
-        except Exception as e:
-            print(f"Error: {e}", flush=True)
-            # Rollback the session in case of error
-            db.session.rollback()
-            return {"status": "error", "message": "Error al actualizar el usuario"}, 500
-
-# Register the UserEdit resource with the API
-api.add_resource(UserEdit, "/api/edit_user")
-
-class CheckGenerationStatus(Resource):
-    """Check the status of a project report generation task."""
-
-    @auth_required
-    def get(self):
-        """Check the status of a project report generation task."""
-        projects = Projects.query.filter_by(email=current_user().email).where(Projects.in_process == True).all()
-
-        return {"projects": [project.project_name for project in projects]}, 200
-
-api.add_resource(CheckGenerationStatus, "/api/check-generation-status")
-
-class CheckGenerationStatusAdmin(Resource):
-    """Check the status of a project report generation task."""
-
-    @auth_required
-    @roles_required("admin")
-    def get(self):
-        """Check the status of a project report generation task."""
-
-        projects = Projects.query.where(Projects.in_process == True).all()
-
-        return {"projects": [[project.email, project.project_name] for project in projects]}, 200
-
-api.add_resource(CheckGenerationStatusAdmin, "/api/check-generation-status/admin")
-
-class GetReportData(Resource):
-    """Check the status of a project report generation task."""
-
-    @auth_required
-    def post(self):
-        """Check the status of a project report generation task."""
-        if request.is_json:
-            data = request.get_json()
-            project_name = data.get("project_name")
-            user_email = data.get("email", current_user().email)
-        project = Projects.query.filter_by(email=user_email, project_name=project_name).first()
-
-        payload = {
-            "report_name": project.report_name,
-            "report_data": project.report_data.decode('utf-8', errors='ignore') if project.report_data else None,
-            "report_reasoning": project.report_reasoning.decode('utf-8', errors='ignore') if project.report_reasoning else None,
-        }
-
-        return {"ok": True, "content": payload}, 200
-
-api.add_resource(GetReportData, "/api/get-report-data")
-
-class CVEResource(Resource):
-    """Handles CVE data retrieval and embedding"""
-    def get(self) -> tuple[str, int]:
-        cves = CVE.query.all()
-        result = []
-        for cve in cves:
-            result.append({
-                "cve_id": cve.cve_id,
-                "description": cve.description,
-                "published_date": cve.published_date.isoformat() if cve.published_date else None,
-                "last_modified_date": cve.last_modified_date.isoformat() if cve.last_modified_date else None,
-                "cvss_score": cve.cvss_score,
-                "vector_string": cve.vector_string,
-                "severity": cve.severity,
-                "cwe_id": cve.cwe_id,
-            })
-
-        return result, 200
-
-api.add_resource(CVEResource, "/api/cve")
-
-class GetCriteria(Resource):
-    """Handles retrieval of rules for CVE embedding"""
-    @auth_required
-    def post(self):
-        """Check the status of a project report generation task."""
-        if request.is_json:
-            data = request.get_json()
-            project_name = data.get("project_name")
-            user_email = data.get("email", current_user().email)
-        project = Projects.query.filter_by(email=user_email, project_name=project_name).first()
-
-        payload = {
-            "max_total_vulns": project.max_total_vulns,
-            "min_fixable_ratio": project.min_fixable_ratio,
-            "max_severity_level": project.max_severity_level,
-            "composite_score": project.composite_score,
-        }
-
-        return {"ok": True, "content": payload}, 200
-
-api.add_resource(GetCriteria, "/api/get-criteria")
-
-class GetUserNotifications(Resource):
-    """Handles notifications"""
-
-    @auth_required
-    def get(self) -> tuple[str, int]:
-        """
-        Returns a notification message.
-        This is a placeholder for future notification functionality.
-        """
-        try:
-            user_notifications = Notifications.query.filter_by(user_email=current_user().email).all()
-            notifications = [notification.to_dict() for notification in user_notifications]
-            if not notifications:
-                return {"message": "No notifications available"}, 200
-            else:
-                Notifications.query.filter_by(user_email=current_user().email).update({"is_read": True})
-                db.session.commit()
-            return {"notifications": notifications}, 200
-        except Exception as e:
-            traceback.print_exc()
-            print(f"Error retrieving notifications: {e}", flush=True)
-            return {"message": "Error retrieving notifications"}, 500
-
-api.add_resource(GetUserNotifications, "/api/notification")
-
-class GetAllNotifications(Resource):
-
-    @auth_required
-    @roles_required("admin")
-    def get(self):
-        try:
-            user_notifications = Notifications.query.all()
-            notifications = [notification.to_dict() for notification in user_notifications]
-            if not notifications:
-                return {"message": "No notifications available"}, 200
-            else:
-                Notifications.query.filter_by(user_email=current_user().email).update({"is_read": True})
-                db.session.commit()
-            return {"notifications": notifications}, 200
-        except Exception as e:
-            traceback.print_exc()
-            print(f"Error retrieving notifications: {e}", flush=True)
-            return {"message": "Error retrieving notifications"}, 500
-
-api.add_resource(GetAllNotifications, "/api/notification/admin")
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=80, debug=True)
