@@ -49,10 +49,10 @@ La aplicación web ofrece un gran número de funcionalidades acordes a la especi
 
 - Recibir notificaciones en la aplicación web (accesibles en el icono del correo)
 
-- Recibir una copia de los informes en el correo asciado a la cuenta
+- Recibir una copia de los informes en el correo asociado a la cuenta (funcional si se crea un usuario con un correo electrónico válido)
 
 > [!WARNING]
-> Este servicio es funcional a nivel de DEMO mediante un *relay* de correo en un subdominio propio, cumpliendo con el RGPD
+> Este servicio es funcional a nivel de DEMO mediante un *relay* de correo en un subdominio propio, cumpliendo con el RGPD.
 
 La aplicación cuenta con una interfaz elegante basada en **Bootstrap Flatly** con una UI/UX intuitivas.
 
@@ -93,7 +93,16 @@ Por defecto, la aplicación cuenta con un usuario administrador con las siguient
 - **Usuario:** `admin`
 - **Contraseña:** `admin_pass`
 
+> [!TIP]
+> Es posible cambiar la contraseña desde el panel de administración (recomendable).
 
+El usuario administrador puede crear nuevos usuarios y proyectos, así como gestionar los existentes.
+
+## DEMO
+
+Puedes ver una demostración de la aplicación en el siguiente video:
+
+<video controls src="video_demo.mov" title="Demostración de SVAIA"></video>
 
 ## Autores
 

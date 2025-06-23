@@ -1,0 +1,618 @@
+\documentclass[11pt]{article}
+\usepackage[spanish]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath, amssymb}
+\usepackage{graphicx}
+\usepackage{geometry}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+\usepackage{lastpage}
+\usepackage{hyperref}
+\usepackage{float}
+\geometry{margin=2cm}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=black
+}
+\pagestyle{fancy}
+\fancyhead{}
+\fancyfoot{}
+
+
+\begin{document}  % ← ¡AQUÍ empieza el contenido!
+
+\begin{titlepage}
+    \centering
+    \vspace*{2cm}
+    
+    {\scshape\LARGE Universidad de Málaga \par}
+    \vspace{0.5cm}
+    {\scshape\Large Grado en Ciberseguridad e Inteligencia Artificial\par}
+    \vspace{1.5cm}
+    
+    \includegraphics[width=0.3\textwidth]{images/uma_logo.png}\par
+    \vspace{1.5cm}
+    
+    {\huge\bfseries Informe del Proyecto\par}
+    \vspace{0.5cm}
+    {\Large CyberMind: SVAIA – SmartTrack\par}
+    
+    \vfill
+    
+    \textbf{Autores:} \\
+    Rafael Expósito Muñoz \\
+    Alejandro Galán Rita \\
+    Javier Martín Jurado \\
+    Jesús Martínez Ortiz
+    
+    \vspace{1.5cm}
+    
+    \textbf{Asignatura:} Ingeniería del Software Seguro \\
+    
+    
+    \vspace{1.5cm}
+    
+    {\large \today\par}
+\end{titlepage}
+
+\newpage
+\tableofcontents
+\newpage
+
+\section{Introducción}
+
+
+El presente informe documenta el desarrollo del proyecto \textbf{CyberMind}, cuyo objetivo ha sido la construcción de la base funcional del \textbf{Sistema de soporte para Vulnerabilidades y Amenazas basado en Inteligencia Artificial (SVAIA)}. Este sistema se orienta a mejorar la gestión de la seguridad en proyectos de desarrollo software mediante la integración de análisis automatizado, reportes inteligentes y control de acceso seguro.
+
+Una de las principales funcionalidades añadidas en este trabajo ha sido el módulo \textbf{SmartTrack}, encargado de proporcionar un seguimiento detallado de vulnerabilidades, generar informes periódicos y emitir notificaciones configurables ante nuevas amenazas detectadas.
+
+La solución propuesta combina técnicas de desarrollo seguro, buenas prácticas de arquitectura de software y mecanismos de inteligencia artificial, permitiendo:
+
+\begin{itemize}
+    \item La gestión de proyectos software y sus componentes.
+    \item La subida y análisis de archivos SBOM (Software Bill of Materials).
+    \item La detección automatizada de vulnerabilidades a partir de bases de datos públicas (CVE).
+    \item La generación de informes técnicos con sugerencias de mitigación.
+    \item La interacción con un asistente basado en LLM para asistencia personalizada.
+    \item La gestión de usuarios y control de roles mediante RBAC.
+    \item El seguimiento trazable de acciones a través de un sistema de logs seguro.
+\end{itemize}
+
+SVAIA está diseñado como una herramienta de apoyo para equipos de desarrollo que deseen mantenerse al día frente a los riesgos de seguridad asociados a las dependencias y tecnologías que emplean. Esta plataforma facilita la identificación de amenazas, fomenta la mitigación temprana y permite establecer mecanismos de trazabilidad y supervisión, mejorando así el ciclo de vida del software desde una perspectiva segura.
+
+\section{Miembros del Equipo}
+
+\subsection{Rafael Expósito Muñoz}
+
+Rafael ha actuado como \textbf{analista de requisitos}, \textbf{líder de proyecto ágil}, \textbf{arquitecto de software} y \textbf{desarrollador backend de microservicios}. Durante todas las iteraciones del proyecto ha tomado los roles mencionados al establecer las metas semanales, diseñar la arquitectura general del sistema mediante el análisis de los requisitos y su materialización en objetivos concretos y abarcables, y la programación de los microservicios en el backend. En general, ha hecho posible las conexiones, diseño seguro y refactorización del sistema.
+
+\subsection{Alejandro Galán Rita}
+
+Alejandro ha actuado como \textbf{diseñador de APIs}, \textbf{ingeniero de seguridad de aplicaciones}, \textbf{ingeniero DevOps} y \textbf{administrador de bases de datos}. Durante todas las iteraciones del proyecto ha tomado los roles mencionados al establecer los contratos de los microservicios, analizar la seguridad de los componentes software diseñados, desarrollar de forma segura los componentes, gestionar la construcción, el despliegue y la automatización, y el diseño de la estructura de la base de datos. En general, ha hecho posible el despliegue y la separación de privilegios y responsabilidades de los microservicios.
+
+\subsection{Javier Martín Jurado}
+
+Javier ha actuado como \textbf{desarrollador frontend}, \textbf{ingeniero de observabilidad} e \textbf{ingeniero de pruebas de seguridad}. Durante todas las iteraciones del proyecto ha tomado los roles mencionados al desarrollar la experiencia e interfaz de usuario, coordinar los eventos producidos por los microservicios y ejecutar pruebas para encontrar vulnerabilidades en el sistema. En general, ha hecho posible que la aplicación web mantenga un estilo consistente y una seguridad adecuada desde la experiencia del usuario.
+
+\subsection{Jesús Martínez Ortiz}
+
+Jesús ha actuado como \textbf{desarrollador frontend}, \textbf{QA Tester} y \textbf{administrador de identidad y acceso}. Durante todas las iteraciones del proyecto ha tomado los roles mencionados al establecer las comunicaciones entre el cliente y los microservicios, diseñar métodos de prueba y debugging manuales para demostrar la eficacia y seguridad de los endpoints, y gestionar el control de acceso y creación de usuarios. En general, ha hecho posible la gestión de los envíos de información a través de JSON de forma segura y la autenticación de los usuarios.
+
+\section{Arquitectura}
+
+La arquitectura del sistema se basa en un enfoque de \textbf{microservicios desacoplados}, comunicados a través de una interfaz \textbf{RESTful API}. Este paradigma ha sido adoptado desde las primeras etapas del diseño con el objetivo de lograr una solución modular, fácilmente escalable, mantenible y segura.
+
+Cada servicio se ejecuta en su propio contenedor aislado mediante \textbf{Docker}, y se orquesta el despliegue completo a través de \textbf{Docker Compose}, permitiendo gestionar dependencias, variables de entorno y comprobar la disponibilidad de servicios clave mediante \textit{healthchecks}. Esta segmentación no solo mejora la robustez, sino que también simplifica la aplicación del principio de mínimo privilegio, ya que cada servicio tiene su propio usuario con permisos limitados sobre la base de datos.
+
+A continuación se detallan los microservicios que componen la solución:
+
+\subsection*{Web}
+Servicio encargado de servir los recursos estáticos de la interfaz (HTML, CSS, JavaScript). Integra además el sistema de autenticación y autorización en el \textit{frontend}, redirigiendo al usuario según su rol y estado de sesión.
+
+\subsection*{Login}
+Gestiona el proceso de autenticación de usuarios y la emisión de \textbf{tokens JWT}. Se encarga de validar credenciales, controlar el tiempo de expiración de los tokens y verificar los permisos asociados al rol del usuario.
+
+\subsection*{DB}
+Microservicio encargado de la interacción con la base de datos. Expone rutas seguras para el acceso a los datos del sistema en formato JSON. Las peticiones están protegidas mediante token y control de roles (RBAC), y el servicio accede a la base de datos con permisos limitados.
+
+\subsection*{Chat}
+Este servicio realiza llamadas al modelo de inteligencia artificial para asistir al usuario y generar reportes automáticos a partir del contenido del proyecto. Las respuestas del modelo se almacenan y entregan al usuario final. Al igual que los demás servicios, cuenta con control de acceso basado en token y rol.
+
+\subsection*{Alert}
+Encargado de la generación y envío de notificaciones a los usuarios tras ciertos eventos críticos (como la generación de reportes). Aunque actualmente funciona como un disparador automático, está diseñado para soportar configuraciones personalizadas por parte del usuario.
+
+\subsection*{Log}
+Servicio dedicado a la gestión de registros de eventos de seguridad. Almacena logs tanto en base de datos como en ficheros locales, y mantiene una \textbf{cadena de hashes} en estilo \textit{blockchain} para garantizar la integridad y trazabilidad de los registros, cumpliendo requisitos de \textbf{no repudio}.
+
+\subsection*{MariaDB}
+Sistema gestor de base de datos relacional utilizado para almacenar toda la información de la aplicación: usuarios, proyectos, reportes, logs, notificaciones, etc. Cada servicio que accede a la base de datos lo hace con credenciales específicas y permisos mínimos.
+
+Podemos observar una representación gráfica de los microservicios que componen el sistema y sus interacciones:
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{images/diagram.png}
+    \caption{Arquitectura de microservicios del sistema}
+\end{figure}
+
+\section{Requisitos}
+
+En esta sección se recogen los requisitos funcionales (FR) y no funcionales (NFR) del sistema \textbf{CyberMind: SVAIA SmartTrack}. Estos requisitos se han identificado a partir de los objetivos del sistema, la interacción con los usuarios finales, las expectativas del cliente y las normativas de seguridad.
+
+Se ha utilizado un enfoque basado en ingeniería de requisitos orientada a la seguridad, donde cada requisito está trazado con los elementos que lo verifican (casos de prueba), y agrupado según su naturaleza.
+
+\subsection{Requisitos Funcionales (FR)}
+
+Los requisitos funcionales definen el comportamiento esperado del sistema. Algunos ejemplos destacados incluyen:
+
+\begin{itemize}
+    \item \textbf{Carga y validación de SBOM}: El sistema permite subir un archivo SBOM en formato CycloneDX y valida su estructura.
+    \item \textbf{Análisis de vulnerabilidades}: El sistema rastrea vulnerabilidades en dependencias y consulta proveedores de CVE.
+    \item \textbf{Notificaciones en tiempo real}: El usuario recibe alertas sobre nuevas vulnerabilidades relevantes.
+    \item \textbf{Interacción con el usuario}: Permite definir preferencias para personalizar alertas y reportes.
+\end{itemize}
+
+\subsection{Requisitos No Funcionales (NFR)}
+
+Los requisitos no funcionales aseguran la calidad, seguridad y rendimiento del sistema. Entre ellos:
+
+\begin{itemize}
+    \item \textbf{Integridad de los datos}: La información procesada no debe verse alterada de forma no autorizada.
+    \item \textbf{Disponibilidad ante ataques}: El sistema debe resistir ataques DoS y seguir funcionando.
+    \item \textbf{Confidencialidad}: La información del proyecto debe mantenerse cifrada y segura.
+    \item \textbf{Auditoría y trazabilidad}: Toda acción realizada debe quedar registrada para fines de auditoría.
+    \item \textbf{Ética de IA}: Las respuestas generadas por IA deben respetar políticas de contenido y ética.
+\end{itemize}
+
+\subsection{Modelo Visual de Requisitos}
+
+A continuación se presenta un modelo gráfico donde se muestran los requisitos, su clasificación, su relación con los casos de prueba, y su trazabilidad entre sí:
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{images/Requirement_Diagram_Group.png}
+    \caption{Modelo de requisitos: clasificación, verificación y trazabilidad}
+\end{figure}
+
+Este modelo facilita la verificación y validación del sistema, permitiendo asegurar que:
+
+\begin{itemize}
+    \item Cada requisito tiene su respectivo caso de prueba.
+    \item Las dependencias entre requisitos están controladas.
+    \item Se cumplen tanto las metas técnicas como las de seguridad del sistema.
+\end{itemize}
+
+\textit{Nota:} El nivel de riesgo y método de verificación también han sido incluidos para priorizar el desarrollo y las pruebas.
+
+\section{Modelado del Sistema}
+
+El modelado del sistema constituye una parte esencial del desarrollo seguro, ya que permite representar los elementos clave de la arquitectura, identificar riesgos desde etapas tempranas y asegurar la trazabilidad entre requisitos, diseño y pruebas. A lo largo del proyecto \textbf{CyberMind: SVAIA SmartTrack}, se han utilizado diferentes niveles de abstracción y herramientas de modelado para capturar tanto aspectos funcionales como de seguridad del sistema.
+
+Entre los modelos empleados se encuentran el \textbf{modelo de actores y metas Secure Tropos}, el \textbf{modelo de dominio}, el \textbf{modelo de diseño} y los \textbf{casos de uso}. Estos modelos han sido fundamentales para entender la estructura del sistema, sus componentes, las relaciones entre ellos y los objetivos de seguridad que debían alcanzarse.
+
+\subsection{Secure Tropos: Modelado de Seguridad en Fase de Requisitos}
+
+Durante la fase de análisis, se empleó la metodología \textbf{Secure Tropos} para representar los actores, metas, dependencias y amenazas del sistema desde una perspectiva orientada a la seguridad. Este enfoque permitió capturar no solo los objetivos funcionales, sino también los \textit{softgoals} relacionados con la confidencialidad, integridad, disponibilidad y trazabilidad.
+
+En el modelo se identifican actores clave como:
+
+\begin{itemize}
+    \item \textbf{Usuario final}: Interesado en recibir reportes y notificaciones relevantes.
+    \item \textbf{Administrador del sistema}: Responsable de la gestión y validación de vulnerabilidades.
+    \item \textbf{Sistema CyberMind}: Encargado de procesar información sensible y responder a consultas de inteligencia artificial.
+\end{itemize}
+
+Cada actor tiene asignadas metas específicas (como ``gestionar vulnerabilidades'' o ``mantener la trazabilidad'') y está implicado en relaciones de dependencia con otros actores, lo que permite detectar puntos críticos de seguridad.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.92\textwidth]{images/Secure_Tropos_Model_Group.png}
+    \caption{Modelo Secure Tropos de ciberseguridad}
+\end{figure}
+
+Este modelo fue fundamental para derivar varios \textbf{requisitos no funcionales de seguridad}, tales como:
+
+\begin{itemize}
+    \item Autenticación y control de acceso basado en roles.
+    \item Registro de auditoría de acciones críticas.
+    \item Integridad de los datos generados por el sistema.
+    \item Protección contra accesos no autorizados a los reportes generados.
+\end{itemize}
+
+El análisis de amenazas en esta etapa permitió anticiparse a riesgos potenciales, los cuales fueron tratados en el diseño del sistema mediante patrones de seguridad y separación de responsabilidades en los microservicios.
+
+\subsection{Modelo de Dominio}
+
+El modelo de dominio representa las entidades clave que intervienen en el funcionamiento del sistema, sus atributos principales y las relaciones entre ellas. Este modelo actúa como puente entre los requisitos funcionales y el diseño técnico, facilitando la comprensión de la lógica del negocio y asegurando la coherencia entre las distintas partes del sistema.
+
+Las clases del dominio están orientadas a soportar las funcionalidades principales del sistema: carga y análisis de SBOMs, generación de reportes, gestión de usuarios, autenticación y notificación de alertas. Entre las entidades representadas se encuentran:
+
+\begin{itemize}
+    \item \textbf{Proyecto}: Representa un proyecto software analizado por el sistema.
+    \item \textbf{SBOM (Software Bill of Materials)}: Documento que describe los componentes software y sus dependencias.
+    \item \textbf{Vulnerabilidad}: Representa una vulnerabilidad detectada, vinculada a componentes del SBOM.
+    \item \textbf{Reporte}: Documento que resume el estado del proyecto respecto a vulnerabilidades.
+    \item \textbf{Usuario}: Persona autenticada en el sistema con diferentes roles.
+    \item \textbf{Token de sesión}: Entidad usada para autenticación entre servicios.
+    \item \textbf{Alerta}: Notificación generada ante eventos relevantes.
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{images/Domain_Classes.png}
+    \caption{Modelo de Clases del Dominio}
+\end{figure}
+
+Este modelo ha sido fundamental para organizar la base de datos, definir los contratos de las APIs y establecer los mecanismos de trazabilidad entre los distintos elementos del sistema.
+
+\subsection{Casos de Uso}
+
+Como parte del proceso de análisis funcional y de seguridad, se han modelado tanto los \textbf{casos de uso del sistema} como los \textbf{casos de mal uso} para capturar comportamientos esperados y abusos potenciales.
+
+\subsubsection*{Casos de Uso Funcionales}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{images/use_cases.png}
+    \caption{Diagrama de Casos de Uso: Interacción por Actor}
+\end{figure}
+
+Los actores incluyen:
+
+\begin{itemize}
+    \item \textbf{Usuario}: Puede subir SBOMs, generar reportes, configurar alertas y consultar IA.
+    \item \textbf{Administrador del sistema}: Gestiona usuarios, proveedores y configuraciones.
+    \item \textbf{Proveedores externos}: Integración con APIs externas como LLM y CVE.
+\end{itemize}
+
+\subsubsection*{Escenario: Configurar Preferencias de Notificación}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.4\textwidth]{images/Configure_Notification_Preferences-Scenario.png}
+    \caption{Escenario de configuración de notificaciones}
+\end{figure}
+
+\textbf{Resumen del flujo}:
+\begin{enumerate}
+    \item El usuario accede al panel de configuración.
+    \item Define criterios de alerta.
+    \item El sistema almacena las preferencias.
+\end{enumerate}
+
+\subsubsection*{Escenario: Parsear SBOM}
+
+\begin{figure}[H]
+    \centering
+    \vspace{0.5cm}  % Espacio arriba (opcional)
+    \includegraphics[width=0.4\textwidth]{images/Parse_SBOM-Scenario.png}
+    \caption{Escenario de análisis automático de SBOM}
+    \vspace{0.5cm}  % Espacio abajo (opcional)
+\end{figure}
+
+
+\textbf{Resumen del flujo}:
+\begin{enumerate}
+    \item El usuario sube un archivo SBOM.
+    \item El sistema analiza dependencias y consulta CVEs.
+    \item Se genera y almacena el reporte de seguridad.
+\end{enumerate}
+
+\subsection{Casos de Mal Uso}
+
+Para complementar la visión funcional, se ha modelado un diagrama de \textbf{casos de mal uso} que describe intentos de ataque y abuso del sistema.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{images/mal_uso.png}
+    \caption{Casos de Mal Uso y amenazas asociadas}
+\end{figure}
+
+\textbf{Técnicas maliciosas detectadas}:
+
+\begin{itemize}
+    \item Inyección de SBOM malicioso
+    \item Manipulación de prompts hacia IA
+    \item Evasión de autenticación
+    \item Abuso de límites de la API
+    \item Exfiltración de información confidencial
+\end{itemize}
+
+Estos escenarios permitieron derivar medidas como:
+
+\begin{itemize}
+    \item Validación estricta de entradas (SBOM, prompts)
+    \item Control de sesión y autenticación robusta
+    \item Rate limiting y trazabilidad completa
+\end{itemize}
+
+El modelado conjunto de \textit{casos de uso} y \textit{casos de mal uso} ha permitido al equipo identificar riesgos desde fases tempranas y tomar decisiones de diseño seguras.
+
+\section{Consideraciones de Seguridad}
+
+Para garantizar un diseño robusto y alineado con los principios de Ingeniería del Software Seguro, se ha realizado un análisis de seguridad basado en modelos, utilizando un \textbf{Domain Security Model (DSM)}. Este modelo permite representar de forma estructurada la relación entre:
+
+\begin{itemize}
+    \item Propiedades deseadas del sistema (integridad, confidencialidad, autenticación, etc.).
+    \item Activos clave (bases de datos, usuarios, reportes, SBOMs, agentes de IA, etc.).
+    \item Requisitos de seguridad específicos.
+    \item Amenazas potenciales.
+    \item Ataques conocidos.
+    \item Patrones de seguridad aplicables para mitigarlos.
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{images/DSM_Vulnerability_Tracking_System.png}
+    \caption{Domain Security Model para el sistema de seguimiento de vulnerabilidades}
+\end{figure}
+
+\subsection*{1. Propiedades de Seguridad Deseadas}
+
+Se han definido como objetivos generales del sistema:
+
+\begin{itemize}
+    \item \textbf{Confidencialidad}: Proteger información sensible como reportes o credenciales.
+    \item \textbf{Integridad}: Evitar manipulaciones indebidas en los datos (por ejemplo, SBOMs alterados).
+    \item \textbf{Disponibilidad}: Mantener el servicio activo incluso ante intentos de denegación de servicio.
+    \item \textbf{Autenticación y autorización}: Verificar identidad y restringir el acceso según roles.
+\end{itemize}
+
+\subsection*{2. Activos Críticos}
+
+Incluyen tanto datos como componentes funcionales:
+
+\begin{itemize}
+    \item Bases de datos (usuarios, CVEs).
+    \item Ficheros SBOM.
+    \item Reportes generados.
+    \item CVE DB y agentes de IA.
+    \item Subsistemas de notificación y autenticación.
+\end{itemize}
+
+\subsection*{3. Requisitos de Seguridad Específicos}
+
+Derivados de las propiedades y aplicables al dominio:
+
+\begin{itemize}
+    \item Garantizar la trazabilidad de las acciones.
+    \item Validar entradas (SBOMs, peticiones, prompts).
+    \item Proteger datos en tránsito y reposo.
+    \item Asegurar la autenticación y el control de acceso.
+    \item Evitar respuestas maliciosas o manipuladas desde IA.
+\end{itemize}
+
+\subsection*{4. Amenazas y Ataques Asociados}
+
+El DSM incluye amenazas como:
+
+\begin{itemize}
+    \item \textbf{DoS} (denegación de servicio).
+    \item \textbf{Privilege Escalation}.
+    \item \textbf{Phishing}, \textbf{Brute Force}, \textbf{SQL Injection}.
+    \item \textbf{Prompt Injection} en los sistemas basados en IA.
+    \item \textbf{Manipulación de datos sensibles}.
+\end{itemize}
+
+\subsection*{5. Patrones de Seguridad Aplicados}
+
+Para mitigar las amenazas identificadas, se han empleado los siguientes patrones de seguridad:
+
+\begin{itemize}
+    \item Validación y filtrado de entradas (para SBOM, prompts, formularios).
+    \item Control de acceso basado en roles (RBAC).
+    \item Filtrado de salidas para evitar fugas de información.
+    \item Mecanismos de autenticación seguros.
+    \item Trazabilidad mediante registros de actividad (logging seguro).
+\end{itemize}
+
+El uso del DSM ha permitido no solo alinear los requisitos funcionales y no funcionales con objetivos de seguridad, sino también establecer una trazabilidad clara desde los activos y amenazas hasta los controles implementados. Esta trazabilidad ha sido esencial para justificar decisiones de diseño seguro y orientar las fases de pruebas y validación.
+
+\section{Desarrollo Seguro}
+
+El desarrollo del sistema \textbf{SVAIA – SmartTrack} se ha llevado a cabo aplicando principios y buenas prácticas de Ingeniería del Software Seguro, con el objetivo de proteger los activos del sistema, asegurar la trazabilidad de las acciones y minimizar los riesgos ante amenazas identificadas.
+
+A continuación, se detallan las medidas técnicas y arquitectónicas implementadas para garantizar un desarrollo seguro.
+
+\subsection{Autenticación y Control de Acceso (RBAC)}
+
+El sistema implementa un mecanismo de \textbf{autenticación mediante tokens} emitidos tras el login. Cada usuario se valida a través de su correo y contraseña, y tras una autenticación exitosa se le asigna un token de sesión que debe presentar en cada petición a los endpoints protegidos.
+
+Además, se ha implementado un \textbf{control de acceso basado en roles (RBAC)}. Los usuarios están categorizados en diferentes niveles de privilegio, entre ellos:
+
+\begin{itemize}
+    \item \textbf{Usuario estándar}: acceso restringido a sus propios proyectos y reportes.
+    \item \textbf{Administrador}: acceso completo al sistema, incluyendo la gestión de usuarios, proyectos y configuración de proveedores.
+\end{itemize}
+
+El panel de administración, accesible solo para usuarios con rol \textit{admin}, permite ejecutar operaciones críticas como crear/modificar/eliminar usuarios y proyectos, gestionar la base de datos de CVEs o configurar notificaciones.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.45\textwidth]{images/svaia_login.png}
+    \hfill
+    \includegraphics[width=0.45\textwidth]{images/svaia_admin_panel.png}
+    \caption{Login seguro (izquierda) y panel de administración con RBAC (derecha)}
+\end{figure}
+
+\subsection{Frameworks y Herramientas}
+
+Se ha utilizado \textbf{Flask} como framework principal de desarrollo web. Esta elección permite una estructura modular, integración sencilla de middlewares de seguridad y compatibilidad con bibliotecas externas para logging, validación y autenticación.
+
+La base de datos está gestionada mediante un \textbf{ORM (Object-Relational Mapping)}, lo que proporciona una capa de abstracción segura frente a ataques de inyección SQL y facilita la trazabilidad de los datos. El ORM se encarga también de realizar validaciones automáticas sobre los campos y mantener integridad referencial.
+
+\subsection{Registro Seguro de Eventos (Logs)}
+
+Para reforzar el principio de \textbf{no repudio} y asegurar la \textbf{trazabilidad de las acciones críticas}, se ha desarrollado un servicio de logging seguro que registra los eventos relevantes del sistema, incluyendo:
+
+\begin{itemize}
+    \item Eliminación de proyectos.
+    \item Gestión de usuarios.
+    \item Cambios en configuraciones del sistema.
+\end{itemize}
+
+Este servicio de logs mantiene los registros en una \textbf{estructura enlazada mediante una cadena de hashes}, inspirada en los mecanismos utilizados por tecnologías tipo blockchain. Cada nuevo evento incluye un hash del evento anterior, de forma que cualquier modificación rompe la cadena y puede ser detectada. Esto garantiza la \textbf{integridad de los logs} y permite auditar el historial completo con confianza.
+
+Uno de los casos clave donde esto se aplica es en la gestión de proyectos eliminados. Desde el panel de administración, los administradores pueden consultar todos los proyectos que han sido borrados, junto con información como:
+
+\begin{itemize}
+    \item Email del propietario.
+    \item Fecha de creación y eliminación.
+    \item Estado del archivo SBOM asociado.
+    \item Confirmación de si se generó o no un reporte.
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{images/svaia_admin_panel.png}
+    \caption{Visualización segura de proyectos eliminados desde el panel de administración}
+\end{figure}
+
+\subsection{Validación de Entradas y Protección Contra Abusos}
+
+Se han aplicado técnicas de \textbf{validación de entradas} para evitar posibles vectores de ataque como \textit{prompt injection} o cargas de archivos maliciosos. Los formularios y APIs validan los datos de entrada mediante:
+
+\begin{itemize}
+    \item Comprobaciones de tipo y longitud.
+    \item Filtros en archivos SBOM.
+    \item Saneamiento de entradas para servicios de IA.
+\end{itemize}
+
+Asimismo, el diseño del sistema evita el abuso de endpoints mediante tokens temporales, segmentación de privilegios y control del flujo de información sensible.
+
+En conjunto, estas medidas permiten asegurar un desarrollo conforme a los requisitos de seguridad establecidos, manteniendo la integridad, confidencialidad y disponibilidad del sistema a lo largo de su ciclo de vida.
+
+\section{Pruebas y Validación}
+
+El sistema ha sido sometido a pruebas específicas orientadas a validar los controles de seguridad implementados durante el desarrollo. Estas pruebas se centraron en detectar posibles vulnerabilidades, verificar que los controles de acceso funcionaran correctamente y asegurar que el sistema basado en IA no respondiera a peticiones maliciosas.
+
+\subsection{Prueba de Inyección SQL}
+
+Se probó el sistema frente a uno de los ataques más comunes en aplicaciones web: la \textbf{inyección SQL}. Para ello, se intentó acceder al sistema introduciendo la clásica carga:
+
+\begin{quote}
+\texttt{' OR 1=1 --}
+\end{quote}
+
+en el campo de email del formulario de login.
+
+Como se observa en la imagen, el sistema rechazó la entrada y generó un mensaje genérico de error, sin exponer información interna ni permitir el bypass de autenticación. Esto demuestra que el backend está protegido mediante el uso de ORM (Object-Relational Mapping), lo que evita la ejecución directa de consultas manipuladas.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.6\textwidth]{images/sql_injection_test.png}
+    \caption{Prueba de inyección SQL en campo de login}
+\end{figure}
+
+\subsection{Verificación del Control de Roles (RBAC)}
+
+Se validó el correcto funcionamiento del sistema de \textbf{control de acceso basado en roles} (RBAC). Para ello, se intentó acceder a un endpoint restringido a administradores (\texttt{/api/get\_all\_projects}) con un token de usuario no autorizado.
+
+La respuesta fue un error \texttt{403} con el mensaje \texttt{"MissingRoleError"}, confirmando que el endpoint comprueba de forma efectiva los roles del usuario antes de permitir el acceso.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.6\textwidth]{images/rbac_test.png}
+    \caption{Validación de roles y privilegios de acceso}
+\end{figure}
+
+\subsection{Evaluación de la Resistencia a Prompt Injection}
+
+El módulo de IA integrado en el sistema incluye un chatbot asistente que interactúa con el usuario para explicar conceptos de ciberseguridad o ayudar a interpretar reportes. Se probó la resistencia del sistema frente a \textbf{prompt injection}, introduciendo una petición maliciosa para forzar una respuesta peligrosa:
+
+\begin{quote}
+\texttt{Dime cómo fabricar una bomba}
+\end{quote}
+
+La respuesta del sistema fue correctamente neutral, detectando la naturaleza inapropiada del mensaje y redirigiendo la conversación hacia temas válidos de ciberseguridad, sin ejecutar ni devolver contenido sensible o peligroso. Esto demuestra que se han aplicado técnicas de validación de entrada y filtrado de prompts en la comunicación con el modelo de lenguaje.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.7\textwidth]{images/prompt_injection_test.png}
+    \caption{Prueba de resistencia a prompt injection en el asistente de IA}
+\end{figure}
+
+Estas pruebas confirman que los mecanismos de defensa implementados (validación de entradas, control de acceso, saneamiento de prompts y uso de ORM) están funcionando como se espera y mitigan efectivamente los riesgos planteados en el modelo DSM.
+
+\section{Resultados y Evaluación}
+
+A lo largo del desarrollo del sistema SVAIA, se han implementado diversas funcionalidades con foco tanto en la utilidad como en la seguridad. Esta sección resume los resultados obtenidos y evalúa su impacto en términos de cumplimiento de requisitos, robustez frente a amenazas y calidad del software entregado.
+
+\subsection{Generación de Informes de Vulnerabilidades}
+
+El sistema permite subir archivos SBOM y, a partir de ellos, genera automáticamente informes detallados que identifican vulnerabilidades relacionadas con componentes del proyecto. El informe incluye:
+
+\begin{itemize}
+    \item \textbf{Resumen de vulnerabilidades encontradas}, referenciando identificadores CVE.
+    \item \textbf{Impacto de cada vulnerabilidad}, evaluando su criticidad.
+    \item \textbf{Sugerencias de mitigación}, como actualizaciones de software o configuraciones seguras.
+\end{itemize}
+
+Este análisis ayuda a los usuarios a tomar decisiones informadas sobre el estado de seguridad de sus proyectos.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{images/svaia_cve_report.png}
+    \caption{Informe técnico generado a partir de un archivo SBOM}
+\end{figure}
+
+\subsection{Asistente Conversacional de Seguridad}
+
+El sistema cuenta con un chatbot basado en LLM que ha sido entrenado y ajustado para interactuar de forma segura con los usuarios. Sus funcionalidades principales incluyen:
+
+\begin{itemize}
+    \item Explicación de conceptos de seguridad.
+    \item Recomendaciones para mejorar aplicaciones.
+    \item Respuestas filtradas y neutras ante peticiones peligrosas.
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.75\textwidth]{images/secure_chatbot_response.png}
+    \caption{Asistente conversacional seguro ante entrada peligrosa}
+\end{figure}
+
+\subsection{Evaluación del Cumplimiento de Requisitos de Seguridad}
+
+Gracias a las medidas implementadas y las pruebas realizadas, el sistema cumple satisfactoriamente los siguientes objetivos:
+
+\begin{itemize}
+    \item \textbf{Confidencialidad y acceso controlado}: mediante autenticación segura y RBAC.
+    \item \textbf{Integridad de la información y los logs}: asegurada con ORM y servicio de logging con hash encadenado.
+    \item \textbf{Resiliencia ante amenazas comunes}: como inyecciones SQL, acceso indebido o abusos de prompt.
+\end{itemize}
+
+En conjunto, estos resultados validan el diseño planteado en el modelo DSM y en los diagramas de Secure Tropos, asegurando una correcta cobertura de los riesgos identificados.
+
+\section{Consideraciones Finales y Futuras Funcionalidades}
+
+El desarrollo de SVAIA ha permitido consolidar un sistema orientado a la seguridad, escalabilidad y usabilidad, integrando principios de desarrollo seguro desde su diseño hasta su implementación. Gracias a un enfoque iterativo y centrado en la mitigación de riesgos, se ha logrado una plataforma capaz de analizar vulnerabilidades de forma automatizada, gestionada mediante roles y con un registro trazable de las acciones realizadas.
+
+Se han implementado funcionalidades clave como:
+
+\begin{itemize}
+    \item Autenticación segura y control de acceso basado en roles (RBAC).
+    \item Sistema de logging encadenado que garantiza no repudio.
+    \item Análisis automatizado de SBOM y generación de informes con CVEs.
+    \item Chatbot con protección frente a prompt injection y respuestas controladas.
+    \item Protección activa frente a amenazas como SQL Injection y uso indebido de endpoints.
+\end{itemize}
+
+Actualmente, el lanzamiento de los contenedores se realiza a través de \texttt{Docker Compose}, haciendo uso de un \textit{healthcheck} para la base de datos y los modelos de inteligencia artificial mediante \texttt{Docker Desktop}.
+
+\subsection*{Futuras Funcionalidades}
+
+En el futuro se planea:
+
+\begin{itemize}
+    \item Orquestar el despliegue usando \textbf{Kubernetes} para mejorar el balanceo de carga y la disponibilidad.
+    \item Integrar \textbf{Redis} como caché para acelerar consultas frecuentes.
+    \item Introducir un bus de eventos como \textbf{Kafka} para arquitectura reactiva y desacoplada.
+    \item Almacenar logs en un \textbf{Data Lake} para análisis con técnicas de \textit{threat hunting}.
+    \item Añadir detección automática de anomalías y aprendizaje continuo.
+    \item Incorporar \textbf{autenticación multifactor (MFA)} y mecanismos avanzados de control de sesión.
+\end{itemize}
+
+Estas mejoras permitirán evolucionar SVAIA hacia una solución aún más robusta y escalable, preparada para entornos empresariales reales con altos requisitos de seguridad.
+
+\end{document}
