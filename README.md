@@ -54,7 +54,9 @@ La aplicación web ofrece un gran número de funcionalidades acordes a la especi
 > [!WARNING]
 > Este servicio es funcional a nivel de DEMO mediante un *relay* de correo en un subdominio propio, cumpliendo con el RGPD.
 
-La aplicación cuenta con una interfaz elegante basada en **Bootstrap Flatly** con una UI/UX intuitivas.
+La aplicación cuenta con una interfaz elegante basada en **Bootstrap Flatly** con una UI/UX intuitivas, además de un diseño responsivo que permite su uso en dispositivos móviles.
+
+También se ha implementado un sistema de logging auditable y seguro, que permite registrar acciones de los usuarios y eventos relevantes en la aplicación mediante ***hash block-chaining***.
 
 ## Requisitos
 
